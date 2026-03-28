@@ -19,6 +19,7 @@ class User(Base):
     faculty = relationship("Faculty", back_populates="users")
     department = relationship("Department", back_populates="users")
     manuals = relationship("Manual", back_populates="user", cascade="all, delete")
+    refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
 
     __table_args__ = (
         CheckConstraint(
