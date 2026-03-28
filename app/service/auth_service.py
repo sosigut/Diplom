@@ -25,7 +25,7 @@ ALLOWED_ROLES = {
 }
 
 
-def register_user(db: Session, email: str, password: str, faculty_code: int, department_code: int, role: str) -> User:
+def register_user(db: Session, fio: str,  email: str, password: str, faculty_code: int, department_code: int, role: str) -> User:
     existing_user = db.query(User).filter(User.email == email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Пользователь с таким email уже существует")
@@ -45,6 +45,7 @@ def register_user(db: Session, email: str, password: str, faculty_code: int, dep
         raise HTTPException(status_code=400, detail="Кафедра не принадлежит указанному факультету")
 
     user = User(
+        fio=fio,
         email=email,
         password_hash=hash_password(password),
         role=role,

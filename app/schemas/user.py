@@ -4,6 +4,7 @@ from pydantic import BaseModel, EmailStr
 
 class UserInfo(BaseModel):
     id_user: int
+    fio: str
     email: EmailStr
     role: str
     faculty_name: str
