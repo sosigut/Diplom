@@ -8,7 +8,7 @@ class User(Base):
     __tablename__ = "users"
 
     id_user = Column(Integer, primary_key=True, index=True)
-    fio = Column(String(255), nullable=False, unique=True)
+    fio = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False, unique=True)
     password_hash = Column(String(255), nullable=False)
     role = Column(String(50), nullable=False)
@@ -19,7 +19,6 @@ class User(Base):
 
     faculty = relationship("Faculty", back_populates="users")
     department = relationship("Department", back_populates="users")
-    manuals = relationship("Manual", back_populates="user", cascade="all, delete")
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
 
     __table_args__ = (

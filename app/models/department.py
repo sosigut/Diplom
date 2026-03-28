@@ -16,4 +16,3 @@ class Department(Base):
 
     faculty = relationship("Faculty", back_populates="departments")
     users = relationship("User", back_populates="department")
-    manuals = relationship("Manual", back_populates="department")
