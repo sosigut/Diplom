@@ -3,6 +3,7 @@ import shutil
 import tempfile
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -41,6 +42,9 @@ async def check_document(
         with WordMethodicalChecker(visible=False, mark_document=True) as checker:
             report, checked_path = checker.check(temp_path)
 
+        if not checked_path or not os.path.exists(checked_path):
+            raise HTTPException(status_code=500, detail="Проверенный файл не был создан")
+
         manual = Manual(
             manual_name=file.filename,
             id_user=current_user.id_user,
@@ -51,29 +55,18 @@ async def check_document(
         db.commit()
         db.refresh(manual)
 
-        return {
-            "message": "Проверка выполнена успешно",
-            "manual_id": manual.id_manual,
-            "filename": file.filename,
-            "summary": report.summary(),
-            "issues": [
-                {
-                    "rule": issue.rule,
-                    "severity": issue.severity,
-                    "location": issue.location,
-                    "message": issue.message,
-                    "priority": issue.priority,
-                }
-                for issue in report.issues
-            ],
-            "checked_file_path": checked_path,
-            "uploaded_by": {
-                "id_user": current_user.id_user,
-                "email": current_user.email,
-                "id_faculty": current_user.id_faculty,
-                "id_department": current_user.id_department,
-            },
-        }
+        ext = os.path.splitext(checked_path)[1].lower()
+        media_type = (
+            "application/msword"
+            if ext == ".doc"
+            else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+
+        return FileResponse(
+            path=checked_path,
+            filename=os.path.basename(checked_path),
+            media_type=media_type,
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка проверки документа: {str(e)}")
