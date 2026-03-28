@@ -24,6 +24,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def register(user_data: UserRegister, db: Session = Depends(get_db)):
     user = register_user(
         db=db,
+        fio=user_data.fio,
         email=user_data.email,
         password=user_data.password,
         faculty_code=user_data.faculty_code,
@@ -36,6 +37,7 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
 
     return UserInfo(
         id_user=user.id_user,
+        fio=user.fio,
         email=user.email,
         role=user.role,
         faculty_name=faculty.faculty_name if faculty else "",
@@ -93,6 +95,7 @@ def me(current_user: User = Depends(get_current_user), db: Session = Depends(get
 
     return UserInfo(
         id_user=current_user.id_user,
+        fio=current_user.fio,
         email=current_user.email,
         role=current_user.role,
         faculty_name=faculty.faculty_name if faculty else "",
