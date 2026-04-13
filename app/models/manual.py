@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, UniqueConstraint
+from sqlalchemy import Column, Integer, String, UniqueConstraint, DateTime, func
 
 from app.db.base import Base
 
@@ -12,6 +12,7 @@ class Manual(Base):
     department_code = Column(Integer, nullable=False)
     faculty_code = Column(Integer, nullable=False)
     file_hash = Column(String(64), nullable=False, unique=True)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
 
     __table_args__ = (
         UniqueConstraint("file_hash", name="manual_file_hash_unique"),

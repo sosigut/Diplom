@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Система проверки методичек</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">AI</div>
+        <div>
+          <div class="brand-title">Проверка методичек</div>
+          <div class="brand-subtitle">Веб-система</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-btn active" data-section="auth-section">Авторизация</button>
+        <button class="nav-btn" data-section="profile-section">Профиль</button>
+        <button class="nav-btn" data-section="check-section">Проверка</button>
+        <button class="nav-btn" data-section="statistics-section">Статистика</button>
+        <button class="nav-btn" data-section="admin-section">Администрирование</button>
+      </nav>
+
+      <div class="token-box">
+        <div class="token-label">Статус</div>
+        <div id="auth-status" class="status-badge status-off">Не авторизован</div>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="page-header">
+        <div>
+          <h1>Система автономной проверки методичек</h1>
+          <p>Загрузка файлов, проверка оформления, PDF-отчёт и статистика</p>
+        </div>
+        <div class="header-actions">
+          <button id="load-profile-btn" class="secondary-btn">Обновить профиль</button>
+          <button id="logout-btn" class="danger-btn">Выйти</button>
+        </div>
+      </header>
+
+      <section id="auth-section" class="card section active">
+        <h2>Авторизация</h2>
+
+        <div class="grid two">
+          <div class="panel">
+            <h3>Вход</h3>
+            <form id="login-form">
+              <label>Email</label>
+              <input type="email" id="login-email" required />
+
+              <label>Пароль</label>
+              <input type="password" id="login-password" required />
+
+              <button type="submit" class="primary-btn">Войти</button>
+            </form>
+          </div>
+
+          <div class="panel">
+            <h3>Регистрация</h3>
+            <form id="register-form">
+              <label>ФИО</label>
+              <input type="text" id="register-fio" required />
+
+              <label>Email</label>
+              <input type="email" id="register-email" required />
+
+              <label>Пароль</label>
+              <input type="password" id="register-password" required />
+
+              <label>Код факультета</label>
+              <input type="number" id="register-faculty-code" required />
+
+              <label>Код кафедры</label>
+              <input type="number" id="register-department-code" required />
+
+              <label>Роль</label>
+              <select id="register-role" required>
+                <option value="Доцент">Доцент</option>
+                <option value="Профессор">Профессор</option>
+                <option value="Старший преподаватель">Старший преподаватель</option>
+                <option value="Преподаватель">Преподаватель</option>
+                <option value="Аспирант">Аспирант</option>
+              </select>
+
+              <button type="submit" class="primary-btn">Зарегистрироваться</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section id="profile-section" class="card section">
+        <h2>Профиль пользователя</h2>
+        <div id="profile-card" class="profile-grid empty-state">
+          Профиль пока не загружен
+        </div>
+      </section>
+
+      <section id="check-section" class="card section">
+        <h2>Проверка методички</h2>
+
+        <div class="panel">
+          <form id="check-form">
+            <label>Выберите .doc или .docx файл</label>
+            <input type="file" id="manual-file" accept=".doc,.docx" required />
+            <button type="submit" class="primary-btn">Проверить методичку</button>
+          </form>
+        </div>
+
+        <div id="check-result" class="result-box empty-state">
+          Здесь появится результат проверки
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Мои методички</h3>
+            <button id="load-manuals-btn" class="secondary-btn">Обновить список</button>
+          </div>
+          <div id="manuals-list" class="empty-state">Список пока пуст</div>
+        </div>
+      </section>
+
+      <section id="statistics-section" class="card section">
+        <h2>Статистика</h2>
+
+        <div class="grid three">
+          <div class="panel">
+            <h3>По факультету</h3>
+            <form id="faculty-stat-form">
+              <label>Код факультета</label>
+              <input type="number" id="stat-faculty-code" required />
+              <label>Дата от</label>
+              <input type="date" id="stat-faculty-from" required />
+              <label>Дата до</label>
+              <input type="date" id="stat-faculty-to" required />
+              <button type="submit" class="primary-btn">Посчитать</button>
+            </form>
+          </div>
+
+          <div class="panel">
+            <h3>По кафедре</h3>
+            <form id="department-stat-form">
+              <label>Код кафедры</label>
+              <input type="number" id="stat-department-code" required />
+              <label>Дата от</label>
+              <input type="date" id="stat-department-from" required />
+              <label>Дата до</label>
+              <input type="date" id="stat-department-to" required />
+              <button type="submit" class="primary-btn">Посчитать</button>
+            </form>
+          </div>
+
+          <div class="panel">
+            <h3>По пользователю</h3>
+            <form id="user-stat-form">
+              <label>ФИО пользователя</label>
+              <input type="text" id="stat-user-fio" required />
+              <label>Дата от</label>
+              <input type="date" id="stat-user-from" required />
+              <label>Дата до</label>
+              <input type="date" id="stat-user-to" required />
+              <button type="submit" class="primary-btn">Посчитать</button>
+            </form>
+          </div>
+        </div>
+
+        <div id="statistics-result" class="result-box empty-state">
+          Здесь появится результат статистики
+        </div>
+      </section>
+
+      <section id="admin-section" class="card section">
+        <h2>Администрирование</h2>
+
+        <div class="grid two">
+          <div class="panel">
+            <h3>Создать факультет</h3>
+            <form id="faculty-form">
+              <label>Название факультета</label>
+              <input type="text" id="faculty-name" required />
+
+              <label>Код факультета</label>
+              <input type="number" id="faculty-code" required />
+
+              <label>ФИО декана</label>
+              <input type="text" id="dean-fio" required />
+
+              <button type="submit" class="primary-btn">Создать факультет</button>
+            </form>
+          </div>
+
+          <div class="panel">
+            <h3>Создать кафедру</h3>
+            <form id="department-form">
+              <label>Название кафедры</label>
+              <input type="text" id="department-name" required />
+
+              <label>Код кафедры</label>
+              <input type="number" id="department-code" required />
+
+              <label>Код факультета</label>
+              <input type="number" id="department-faculty-code" required />
+
+              <button type="submit" class="primary-btn">Создать кафедру</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <div id="global-message" class="toast hidden"></div>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

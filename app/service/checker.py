@@ -1,12 +1,14 @@
 import os
 import shutil
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List
 
 try:
-    import win32com.client as win32
+    import win32com.client
+    from win32com.client import dynamic
 except Exception as e:
-    win32 = None
+    win32com = None
+    dynamic = None
     WIN32_IMPORT_ERROR = e
 else:
     WIN32_IMPORT_ERROR = None
@@ -68,14 +70,17 @@ class CheckReport:
 
 class WordMethodicalChecker:
     def __init__(self, visible: bool = False, mark_document: bool = True):
-        if win32 is None:
+        if dynamic is None:
             raise RuntimeError(f"pywin32 не установлен: {WIN32_IMPORT_ERROR}")
         self.word = None
         self.visible = visible
         self.mark_document = mark_document
 
     def __enter__(self):
-        self.word = win32.gencache.EnsureDispatch("Word.Application")
+        try:
+            self.word = dynamic.Dispatch("Word.Application")
+        except Exception as e:
+            raise RuntimeError(f"Не удалось запустить Microsoft Word через COM: {e}")
         self.word.Visible = self.visible
         return self
 
@@ -219,8 +224,8 @@ class WordMethodicalChecker:
 
     # ===== ПРОВЕРКА АБЗАЦЕВ =====
     def _check_paragraphs(self, doc, report):
-        font_errors = []
-        size_errors = []
+        font_pages = []
+        size_pages = []
         indent_pages = []
         spacing_pages = []
 
@@ -231,12 +236,14 @@ class WordMethodicalChecker:
             if not text or len(text) < 3:
                 continue
 
+            # пропуск таблиц
             try:
                 if p.Range.Information(WD_WITHIN_TABLE):
                     continue
             except Exception:
                 pass
 
+            # пропуск заголовков
             try:
                 style_name = str(p.Range.Style.NameLocal).lower()
                 if "heading" in style_name or "заголов" in style_name:
@@ -261,21 +268,62 @@ class WordMethodicalChecker:
             # ===== ШРИФТ =====
             font = str(p.Range.Font.Name).strip()
             if font != "Times New Roman":
-                font_errors.append((i, page))
+                font_pages.append(page)
 
             # ===== РАЗМЕР =====
-            size = float(p.Range.Font.Size)
-            if abs(size - 16) > 0.2:
-                size_errors.append((i, page))
+            try:
+                size = float(p.Range.Font.Size)
+            except Exception:
+                size = 16.0
+
+            # Word иногда возвращает 9999999 для смешанного форматирования
+            if size == 9999999.0:
+                real_bad_size_found = False
+
+                try:
+                    words = p.Range.Words
+                    for j in range(1, words.Count + 1):
+                        w = words(j)
+                        w_text = (w.Text or "").strip()
+
+                        if not w_text:
+                            continue
+
+                        # пропускаем чистые спецсимволы и служебные куски
+                        if w_text in {".", ",", ";", ":", "-", "–", "—", "(", ")", "[", "]", "{", "}", "/", "\\"}:
+                            continue
+
+                        try:
+                            w_size = float(w.Font.Size)
+                        except Exception:
+                            continue
+
+                        # пропускаем мусорное mixed-format value
+                        if w_size == 9999999.0:
+                            continue
+
+                        if abs(w_size - 16) > 0.2:
+                            real_bad_size_found = True
+                            break
+
+                    if real_bad_size_found:
+                        size_pages.append(page)
+
+                except Exception:
+                    # если не удалось проверить слова, лучше не считать это ошибкой автоматически
+                    pass
+            else:
+                if abs(size - 16) > 0.2:
+                    size_pages.append(page)
 
             # ===== ИНТЕРВАЛ =====
             spacing = int(p.Range.ParagraphFormat.LineSpacingRule)
             if spacing != WD_LINE_SPACE_SINGLE:
                 spacing_pages.append(page)
 
-        self._group_paragraphs(doc, report, font_errors, "ERROR", "Неверный шрифт")
-        self._group_paragraphs(doc, report, size_errors, "WARNING", "Размер не 16 pt")
-
+        # Группировка по страницам
+        self._group_pages(doc, report, font_pages, "ERROR", "Неверный шрифт")
+        self._group_pages(doc, report, size_pages, "WARNING", "Размер не 16 pt")
         self._group_pages(doc, report, indent_pages, "ERROR", "Отступ не 1.25 см")
         self._group_pages(doc, report, spacing_pages, "WARNING", "Интервал не одинарный")
 

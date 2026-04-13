@@ -128,8 +128,8 @@ async def check_document(
                 manual = Manual(
                     manual_name=file.filename,
                     fio_user=current_user.fio,
-                    department_code=current_user.department_code,
-                    faculty_code=current_user.faculty_code,
+                    department_code=current_user.id_department,
+                    faculty_code=current_user.id_faculty,
                     file_hash=file_hash,
                 )
                 db.add(manual)
@@ -151,3 +151,22 @@ async def check_document(
 
     finally:
         file.file.close()
+
+@router.get("/my")
+def get_my_manuals(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    manuals = db.query(Manual).filter(Manual.fio_user == current_user.fio).all()
+
+    return [
+        {
+            "id_manual": m.id_manual,
+            "manual_name": m.manual_name,
+            "fio_user": m.fio_user,
+            "department_code": m.department_code,
+            "faculty_code": m.faculty_code,
+            "created_at": getattr(m, "created_at", None),
+        }
+        for m in manuals
+    ]
