@@ -236,14 +236,12 @@ class WordMethodicalChecker:
             if not text or len(text) < 3:
                 continue
 
-            # пропуск таблиц
             try:
                 if p.Range.Information(WD_WITHIN_TABLE):
                     continue
             except Exception:
                 pass
 
-            # пропуск заголовков
             try:
                 style_name = str(p.Range.Style.NameLocal).lower()
                 if "heading" in style_name or "заголов" in style_name:
@@ -276,7 +274,6 @@ class WordMethodicalChecker:
             except Exception:
                 size = 16.0
 
-            # Word иногда возвращает 9999999 для смешанного форматирования
             if size == 9999999.0:
                 real_bad_size_found = False
 
@@ -289,7 +286,7 @@ class WordMethodicalChecker:
                         if not w_text:
                             continue
 
-                        # пропускаем чистые спецсимволы и служебные куски
+
                         if w_text in {".", ",", ";", ":", "-", "–", "—", "(", ")", "[", "]", "{", "}", "/", "\\"}:
                             continue
 
@@ -298,7 +295,6 @@ class WordMethodicalChecker:
                         except Exception:
                             continue
 
-                        # пропускаем мусорное mixed-format value
                         if w_size == 9999999.0:
                             continue
 
@@ -310,7 +306,6 @@ class WordMethodicalChecker:
                         size_pages.append(page)
 
                 except Exception:
-                    # если не удалось проверить слова, лучше не считать это ошибкой автоматически
                     pass
             else:
                 if abs(size - 16) > 0.2:
