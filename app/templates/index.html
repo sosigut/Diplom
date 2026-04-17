@@ -21,6 +21,7 @@
         <button class="nav-btn active" data-section="auth-section">Авторизация</button>
         <button class="nav-btn" data-section="profile-section">Профиль</button>
         <button class="nav-btn" data-section="check-section">Проверка</button>
+        <button class="nav-btn" data-section="title-page-section">Титульный лист</button>
         <button class="nav-btn" data-section="statistics-section">Статистика</button>
         <button class="nav-btn" data-section="admin-section">Администрирование</button>
       </nav>
@@ -124,6 +125,38 @@
         </div>
       </section>
 
+      <section id="title-page-section" class="card section">
+        <h2>Генерация титульного листа</h2>
+
+        <div class="panel">
+          <form id="title-page-form">
+            <label>Название методички</label>
+            <input type="text" id="title-manual-title" required />
+
+            <label>Название дисциплины</label>
+            <input type="text" id="title-discipline-name" required />
+
+            <label>Для кого</label>
+            <select id="title-audience" required>
+              <option value="студентов">Студентов</option>
+              <option value="магистров">Магистров</option>
+            </select>
+
+            <label>Город</label>
+            <input type="text" id="title-city" value="Курск" required />
+
+            <label>Год</label>
+            <input type="number" id="title-year" min="2000" max="2100" required />
+
+            <button type="submit" class="primary-btn">Сгенерировать титульный лист</button>
+          </form>
+        </div>
+
+        <div id="title-page-result" class="result-box empty-state">
+          Здесь появится ссылка на скачивание титульного листа
+        </div>
+      </section>
+
       <section id="statistics-section" class="card section">
         <h2>Статистика</h2>
 
@@ -215,6 +248,6 @@
     </main>
   </div>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=titlepage1"></script>
 </body>
 </html>

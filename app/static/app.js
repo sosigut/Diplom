@@ -396,6 +396,65 @@ async function handleCreateDepartment(event) {
   event.target.reset();
 }
 
+async function handleTitlePageGenerate(event) {
+  event.preventDefault();
+
+  if (!state.accessToken) {
+    showMessage("Сначала войдите в систему", "error");
+    activateSection("auth-section");
+    return;
+  }
+
+  const payload = {
+  manual_title: $("title-manual-title")?.value.trim(),
+  discipline_name: $("title-discipline-name")?.value.trim(),
+  audience: $("title-audience")?.value,
+  city: $("title-city")?.value.trim(),
+  year: Number($("title-year")?.value),
+  };
+
+  if (!payload.manual_title || !payload.discipline_name || !payload.audience || !payload.city || !payload.year) {
+  showMessage("Заполните все поля титульного листа", "error");
+  return;
+  }
+
+  console.log("TITLE PAGE REQUEST", payload);
+
+  const response = await apiFetch("/title-page/generate", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const data = await parseResponse(response);
+    showMessage(data.detail || "Не удалось сгенерировать титульный лист", "error");
+    return;
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+
+  let fileName = "title_page.docx";
+  const disposition = response.headers.get("content-disposition");
+  if (disposition) {
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    if (match && match[1]) {
+      fileName = match[1];
+    }
+  }
+
+  $("title-page-result").innerHTML = `
+    <div class="stat-card">
+      <h3>Титульный лист успешно создан</h3>
+      <p>Файл готов к скачиванию.</p>
+      <div class="actions-row">
+        <a class="link-btn" href="${url}" download="${fileName}">Скачать титульный лист</a>
+      </div>
+    </div>
+  `;
+
+  showMessage("Титульный лист сгенерирован", "success");
+}
 async function logout() {
   if (state.refreshToken) {
     try {
@@ -422,23 +481,31 @@ function initNavigation() {
 }
 
 function initEvents() {
-  $("login-form").addEventListener("submit", handleLogin);
-  $("register-form").addEventListener("submit", handleRegister);
-  $("check-form").addEventListener("submit", handleCheck);
-  $("faculty-stat-form").addEventListener("submit", handleFacultyStat);
-  $("department-stat-form").addEventListener("submit", handleDepartmentStat);
-  $("user-stat-form").addEventListener("submit", handleUserStat);
-  $("faculty-form").addEventListener("submit", handleCreateFaculty);
-  $("department-form").addEventListener("submit", handleCreateDepartment);
-  $("logout-btn").addEventListener("click", logout);
-  $("load-profile-btn").addEventListener("click", loadProfile);
-  $("load-manuals-btn").addEventListener("click", loadManuals);
+  $("login-form")?.addEventListener("submit", handleLogin);
+  $("register-form")?.addEventListener("submit", handleRegister);
+  $("check-form")?.addEventListener("submit", handleCheck);
+  $("title-page-form")?.addEventListener("submit", handleTitlePageGenerate);
+  $("faculty-stat-form")?.addEventListener("submit", handleFacultyStat);
+  $("department-stat-form")?.addEventListener("submit", handleDepartmentStat);
+  $("user-stat-form")?.addEventListener("submit", handleUserStat);
+  $("faculty-form")?.addEventListener("submit", handleCreateFaculty);
+  $("department-form")?.addEventListener("submit", handleCreateDepartment);
+  $("logout-btn")?.addEventListener("click", logout);
+  $("load-profile-btn")?.addEventListener("click", loadProfile);
+  $("load-manuals-btn")?.addEventListener("click", loadManuals);
 }
+
+console.log("APP JS LOADED");
 
 async function bootstrap() {
   updateAuthStatus();
   initNavigation();
   initEvents();
+
+  const yearInput = $("title-year");
+  if (yearInput && !yearInput.value) {
+    yearInput.value = new Date().getFullYear();
+  }
 
   if (state.accessToken) {
     await loadProfile();
