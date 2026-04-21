@@ -1,4 +1,5 @@
 import os
+import re
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
@@ -14,14 +15,27 @@ from app.utils.dependencies import get_current_user
 router = APIRouter(prefix="/title-page", tags=["title-page"])
 
 
+def sanitize_filename(filename: str) -> str:
+    filename = (filename or "").strip()
+
+    if not filename:
+        return "title_page.docx"
+
+    filename = re.sub(r'[\\/:*?"<>|]+', "", filename)
+    filename = re.sub(r"\s+", " ", filename).strip()
+
+    if not filename.lower().endswith(".docx"):
+        filename += ".docx"
+
+    return filename
+
+
 @router.post("/generate")
 def generate_title_page(
     data: TitlePageRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    print("TITLE PAGE ROUTER LOADED FROM:", __file__)
-
     department = db.query(Department).filter(
         Department.id_department == current_user.id_department
     ).first()
@@ -33,14 +47,17 @@ def generate_title_page(
         manual_title=data.manual_title,
         discipline_name=data.discipline_name,
         audience=data.audience,
+        direction_code=data.direction_code,
+        direction_name=data.direction_name,
         department_name=department.department_name,
-        department_code=department.department_code,
         city=data.city,
         year=data.year,
     )
 
+    safe_filename = sanitize_filename(data.output_filename)
+
     return FileResponse(
         path=file_path,
-        filename=os.path.basename(file_path),
+        filename=safe_filename,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )

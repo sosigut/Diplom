@@ -409,16 +409,28 @@ async function handleTitlePageGenerate(event) {
   manual_title: $("title-manual-title")?.value.trim(),
   discipline_name: $("title-discipline-name")?.value.trim(),
   audience: $("title-audience")?.value,
+  direction_code: $("title-direction-code")?.value.trim(),
+  direction_name: $("title-direction-name")?.value.trim(),
   city: $("title-city")?.value.trim(),
   year: Number($("title-year")?.value),
+  output_filename: $("title-output-filename")?.value.trim(),
   };
 
-  if (!payload.manual_title || !payload.discipline_name || !payload.audience || !payload.city || !payload.year) {
-  showMessage("Заполните все поля титульного листа", "error");
-  return;
-  }
-
   console.log("TITLE PAGE REQUEST", payload);
+
+  if (
+  !payload.manual_title ||
+  !payload.discipline_name ||
+  !payload.audience ||
+  !payload.direction_code ||
+  !payload.direction_name ||
+  !payload.city ||
+  !payload.year ||
+  !payload.output_filename
+  ) {
+    showMessage("Заполните все поля титульного листа", "error");
+    return;
+  }
 
   const response = await apiFetch("/title-page/generate", {
     method: "POST",
@@ -427,7 +439,15 @@ async function handleTitlePageGenerate(event) {
 
   if (!response.ok) {
     const data = await parseResponse(response);
-    showMessage(data.detail || "Не удалось сгенерировать титульный лист", "error");
+
+    if (Array.isArray(data.detail)) {
+      const text = data.detail
+        .map(err => `${err.loc.join(" → ")}: ${err.msg}`)
+        .join("; ");
+      showMessage(text, "error");
+    } else {
+      showMessage(data.detail || "Не удалось сгенерировать титульный лист", "error");
+    }
     return;
   }
 
