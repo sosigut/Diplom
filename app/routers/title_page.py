@@ -1,5 +1,4 @@
 import os
-import re
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
@@ -13,21 +12,6 @@ from app.service.title_page_generator import generate_title_page_docx
 from app.utils.dependencies import get_current_user
 
 router = APIRouter(prefix="/title-page", tags=["title-page"])
-
-
-def sanitize_filename(filename: str) -> str:
-    filename = (filename or "").strip()
-
-    if not filename:
-        return "title_page.docx"
-
-    filename = re.sub(r'[\\/:*?"<>|]+', "", filename)
-    filename = re.sub(r"\s+", " ", filename).strip()
-
-    if not filename.lower().endswith(".docx"):
-        filename += ".docx"
-
-    return filename
 
 
 @router.post("/generate")
@@ -52,12 +36,15 @@ def generate_title_page(
         department_name=department.department_name,
         city=data.city,
         year=data.year,
+        udk=data.udk,
+        compiler_name=data.compiler_name,
+        reviewer_name=data.reviewer_name,
+        reviewer_degree=data.reviewer_degree,
+        description=data.description,
     )
-
-    safe_filename = sanitize_filename(data.output_filename)
 
     return FileResponse(
         path=file_path,
-        filename=safe_filename,
+        filename=os.path.basename(file_path),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )

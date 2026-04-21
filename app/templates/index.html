@@ -18,12 +18,12 @@
       </div>
 
       <nav class="nav">
-        <button class="nav-btn active" data-section="auth-section">Авторизация</button>
-        <button class="nav-btn" data-section="profile-section">Профиль</button>
-        <button class="nav-btn" data-section="check-section">Проверка</button>
-        <button class="nav-btn" data-section="title-page-section">Титульный лист</button>
-        <button class="nav-btn" data-section="statistics-section">Статистика</button>
-        <button class="nav-btn" data-section="admin-section">Администрирование</button>
+        <button class="nav-btn active" type="button" data-section="auth-section">Авторизация</button>
+        <button class="nav-btn" type="button" data-section="profile-section">Профиль</button>
+        <button class="nav-btn" type="button" data-section="check-section">Проверка</button>
+        <button class="nav-btn" type="button" data-section="title-page-section">Титульный лист</button>
+        <button class="nav-btn" type="button" data-section="statistics-section">Статистика</button>
+        <button class="nav-btn" type="button" data-section="admin-section">Администрирование</button>
       </nav>
 
       <div class="token-box">
@@ -38,9 +38,10 @@
           <h1>Система автономной проверки методичек</h1>
           <p>Загрузка файлов, проверка оформления, PDF-отчёт и статистика</p>
         </div>
+
         <div class="header-actions">
-          <button id="load-profile-btn" class="secondary-btn">Обновить профиль</button>
-          <button id="logout-btn" class="danger-btn">Выйти</button>
+          <button id="load-profile-btn" type="button" class="secondary-btn">Обновить профиль</button>
+          <button id="logout-btn" type="button" class="danger-btn">Выйти</button>
         </div>
       </header>
 
@@ -51,10 +52,10 @@
           <div class="panel">
             <h3>Вход</h3>
             <form id="login-form">
-              <label>Email</label>
+              <label for="login-email">Email</label>
               <input type="email" id="login-email" required />
 
-              <label>Пароль</label>
+              <label for="login-password">Пароль</label>
               <input type="password" id="login-password" required />
 
               <button type="submit" class="primary-btn">Войти</button>
@@ -64,22 +65,22 @@
           <div class="panel">
             <h3>Регистрация</h3>
             <form id="register-form">
-              <label>ФИО</label>
+              <label for="register-fio">ФИО</label>
               <input type="text" id="register-fio" required />
 
-              <label>Email</label>
+              <label for="register-email">Email</label>
               <input type="email" id="register-email" required />
 
-              <label>Пароль</label>
+              <label for="register-password">Пароль</label>
               <input type="password" id="register-password" required />
 
-              <label>Код факультета</label>
+              <label for="register-faculty-code">Код факультета</label>
               <input type="number" id="register-faculty-code" required />
 
-              <label>Код кафедры</label>
+              <label for="register-department-code">Код кафедры</label>
               <input type="number" id="register-department-code" required />
 
-              <label>Роль</label>
+              <label for="register-role">Роль</label>
               <select id="register-role" required>
                 <option value="Доцент">Доцент</option>
                 <option value="Профессор">Профессор</option>
@@ -106,7 +107,7 @@
 
         <div class="panel">
           <form id="check-form">
-            <label>Выберите .doc или .docx файл</label>
+            <label for="manual-file">Выберите .doc или .docx файл</label>
             <input type="file" id="manual-file" accept=".doc,.docx" required />
             <button type="submit" class="primary-btn">Проверить методичку</button>
           </form>
@@ -119,7 +120,7 @@
         <div class="panel">
           <div class="panel-header">
             <h3>Мои методички</h3>
-            <button id="load-manuals-btn" class="secondary-btn">Обновить список</button>
+            <button id="load-manuals-btn" type="button" class="secondary-btn">Обновить список</button>
           </div>
           <div id="manuals-list" class="empty-state">Список пока пуст</div>
         </div>
@@ -128,43 +129,72 @@
       <section id="title-page-section" class="card section">
         <h2>Генерация титульного листа</h2>
 
-        <div class="panel">
-          <form id="title-page-form">
-            <label>Название методички</label>
-            <input type="text" id="title-manual-title" required />
+        <form id="title-page-form">
+          <div class="grid two">
+            <div class="panel">
+              <h3>Первая страница</h3>
 
-            <label>Название дисциплины</label>
-            <input type="text" id="title-discipline-name" required />
+              <label for="title-manual-title">Название методички</label>
+              <input type="text" id="title-manual-title" required />
 
-            <label>Для кого</label>
-            <select id="title-audience" required>
-              <option value="студентов">Студентов</option>
-              <option value="магистров">Магистров</option>
-            </select>
+              <label for="title-discipline-name">Название дисциплины</label>
+              <input type="text" id="title-discipline-name" required />
 
-            <label>Код направления</label>
-            <input type="text" id="title-direction-code" placeholder="09.03.04" required />
+              <label for="title-audience">Для кого</label>
+              <select id="title-audience" required>
+                <option value="студентов">Студентов</option>
+                <option value="магистров">Магистров</option>
+              </select>
 
-            <label>Название направления</label>
-            <input type="text" id="title-direction-name" placeholder="Программная инженерия" required />
+              <label for="title-direction-code">Код направления</label>
+              <input type="text" id="title-direction-code" required />
 
-            <label>Город</label>
-            <input type="text" id="title-city" value="Курск" required />
+              <label for="title-direction-name">Название направления</label>
+              <input type="text" id="title-direction-name" required />
 
-            <label>Год</label>
-            <input type="number" id="title-year" min="2000" max="2100" required />
+              <label for="title-city">Город</label>
+              <input type="text" id="title-city" value="Курск" required />
 
-            <label>Имя скачиваемого файла</label>
-            <input
-              type="text"
-              id="title-output-filename"
-              placeholder="Например: Метод_динамического_программирования"
-              required
-            />
+              <label for="title-year">Год</label>
+              <input type="number" id="title-year" required />
+            </div>
 
+            <div class="panel">
+              <h3>Вторая страница</h3>
+
+              <label for="title-udk">УДК</label>
+              <input type="text" id="title-udk" required />
+
+              <label for="title-compiler">ФИО составителя</label>
+              <input type="text" id="title-compiler" required />
+
+              <label for="title-reviewer">ФИО рецензента</label>
+              <input type="text" id="title-reviewer" required />
+
+              <label for="title-reviewer-degree">Степень рецензента</label>
+              <input type="text" id="title-reviewer-degree" required />
+
+              <label for="title-description">Краткое описание</label>
+              <div class="textarea-field">
+                <textarea
+                  id="title-description"
+                  name="title-description"
+                  maxlength="1000"
+                  required
+                  placeholder="Введите краткое описание"
+                ></textarea>
+                <div class="textarea-footer">
+                  <small class="field-hint">Не более 1000 символов</small>
+                  <span id="title-description-counter" class="char-counter">0 / 1000</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
             <button type="submit" class="primary-btn">Сгенерировать титульный лист</button>
-          </form>
-        </div>
+          </div>
+        </form>
 
         <div id="title-page-result" class="result-box empty-state">
           Здесь появится ссылка на скачивание титульного листа
@@ -178,12 +208,15 @@
           <div class="panel">
             <h3>По факультету</h3>
             <form id="faculty-stat-form">
-              <label>Код факультета</label>
+              <label for="stat-faculty-code">Код факультета</label>
               <input type="number" id="stat-faculty-code" required />
-              <label>Дата от</label>
+
+              <label for="stat-faculty-from">Дата от</label>
               <input type="date" id="stat-faculty-from" required />
-              <label>Дата до</label>
+
+              <label for="stat-faculty-to">Дата до</label>
               <input type="date" id="stat-faculty-to" required />
+
               <button type="submit" class="primary-btn">Посчитать</button>
             </form>
           </div>
@@ -191,12 +224,15 @@
           <div class="panel">
             <h3>По кафедре</h3>
             <form id="department-stat-form">
-              <label>Код кафедры</label>
+              <label for="stat-department-code">Код кафедры</label>
               <input type="number" id="stat-department-code" required />
-              <label>Дата от</label>
+
+              <label for="stat-department-from">Дата от</label>
               <input type="date" id="stat-department-from" required />
-              <label>Дата до</label>
+
+              <label for="stat-department-to">Дата до</label>
               <input type="date" id="stat-department-to" required />
+
               <button type="submit" class="primary-btn">Посчитать</button>
             </form>
           </div>
@@ -204,12 +240,15 @@
           <div class="panel">
             <h3>По пользователю</h3>
             <form id="user-stat-form">
-              <label>ФИО пользователя</label>
+              <label for="stat-user-fio">ФИО пользователя</label>
               <input type="text" id="stat-user-fio" required />
-              <label>Дата от</label>
+
+              <label for="stat-user-from">Дата от</label>
               <input type="date" id="stat-user-from" required />
-              <label>Дата до</label>
+
+              <label for="stat-user-to">Дата до</label>
               <input type="date" id="stat-user-to" required />
+
               <button type="submit" class="primary-btn">Посчитать</button>
             </form>
           </div>
@@ -227,13 +266,13 @@
           <div class="panel">
             <h3>Создать факультет</h3>
             <form id="faculty-form">
-              <label>Название факультета</label>
+              <label for="faculty-name">Название факультета</label>
               <input type="text" id="faculty-name" required />
 
-              <label>Код факультета</label>
+              <label for="faculty-code">Код факультета</label>
               <input type="number" id="faculty-code" required />
 
-              <label>ФИО декана</label>
+              <label for="dean-fio">ФИО декана</label>
               <input type="text" id="dean-fio" required />
 
               <button type="submit" class="primary-btn">Создать факультет</button>
@@ -243,13 +282,13 @@
           <div class="panel">
             <h3>Создать кафедру</h3>
             <form id="department-form">
-              <label>Название кафедры</label>
+              <label for="department-name">Название кафедры</label>
               <input type="text" id="department-name" required />
 
-              <label>Код кафедры</label>
+              <label for="department-code">Код кафедры</label>
               <input type="number" id="department-code" required />
 
-              <label>Код факультета</label>
+              <label for="department-faculty-code">Код факультета</label>
               <input type="number" id="department-faculty-code" required />
 
               <button type="submit" class="primary-btn">Создать кафедру</button>
@@ -262,6 +301,6 @@
     </main>
   </div>
 
-  <script src="/static/app.js?v=titlepage3"></script>
+  <script src="/static/app.js?v=titlepage5"></script>
 </body>
 </html>

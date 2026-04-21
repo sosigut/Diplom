@@ -3,18 +3,13 @@ import tempfile
 from uuid import uuid4
 
 from docx import Document
-from docx.enum.table import WD_TABLE_ALIGNMENT, WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt, Cm
 
 
 MINISTRY_NAME = "МИНОБРНАУКИ РОССИИ"
-UNIVERSITY_FULL_NAME = (
-    "Федеральное государственное бюджетное образовательное учреждение "
-    "высшего образования"
-)
+UNIVERSITY_FULL_NAME = "Федеральное государственное бюджетное образовательное учреждение высшего образования"
 UNIVERSITY_SHORT_NAME = "«Юго-Западный государственный университет» (ЮЗГУ)"
 
 
@@ -25,22 +20,6 @@ def set_font(run, size=16, bold=False):
     run.bold = bold
 
 
-def remove_table_borders(table):
-    tbl = table._tbl
-    tbl_pr = tbl.tblPr
-    borders = tbl_pr.first_child_found_in("w:tblBorders")
-    if borders is None:
-        borders = OxmlElement("w:tblBorders")
-        tbl_pr.append(borders)
-
-    for border_name in ("top", "left", "bottom", "right", "insideH", "insideV"):
-        border = borders.find(qn(f"w:{border_name}"))
-        if border is None:
-            border = OxmlElement(f"w:{border_name}")
-            borders.append(border)
-        border.set(qn("w:val"), "nil")
-
-
 def add_paragraph(
     doc: Document,
     text: str = "",
@@ -49,69 +28,35 @@ def add_paragraph(
     bold: bool = False,
     space_before: int = 0,
     space_after: int = 0,
-    first_line_indent_cm: float | None = None,
+    line_spacing: float = 1.0,
 ):
     p = doc.add_paragraph()
     p.alignment = align
     p.paragraph_format.space_before = Pt(space_before)
     p.paragraph_format.space_after = Pt(space_after)
-    p.paragraph_format.line_spacing = 1.0
-    if first_line_indent_cm is not None:
-        p.paragraph_format.first_line_indent = Cm(first_line_indent_cm)
+    p.paragraph_format.line_spacing = line_spacing
 
     run = p.add_run(text)
     set_font(run, size=size, bold=bold)
     return p
 
 
+def add_empty_paragraphs(doc: Document, count: int, size: int = 16):
+    for _ in range(count):
+        p = doc.add_paragraph()
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(0)
+        p.paragraph_format.line_spacing = 1.0
+        run = p.add_run("")
+        set_font(run, size=size)
+
+
 def normalize_department_name(name: str) -> str:
     name = (name or "").strip()
-    if name.lower().startswith("кафедра "):
+    lower_name = name.lower()
+    if lower_name.startswith("кафедра "):
         return name[8:].strip()
     return name
-
-
-def add_approval_block(doc: Document, year: int):
-    table = doc.add_table(rows=1, cols=2)
-    table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    table.autofit = False
-    remove_table_borders(table)
-
-    left_cell = table.cell(0, 0)
-    right_cell = table.cell(0, 1)
-
-    left_cell.width = Cm(9.5)
-    right_cell.width = Cm(7.0)
-
-    left_cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
-    right_cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
-
-    left_cell.text = ""
-    right_cell.text = ""
-
-    p = right_cell.paragraphs[0]
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_after = Pt(2)
-    run = p.add_run("УТВЕРЖДАЮ:")
-    set_font(run, size=16, bold=False)
-
-    p = right_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_after = Pt(2)
-    run = p.add_run("Проректор по учебной работе")
-    set_font(run, size=16)
-
-    p = right_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_after = Pt(2)
-    run = p.add_run("_______________ О.Г. Локтионова")
-    set_font(run, size=16)
-
-    p = right_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_after = Pt(0)
-    run = p.add_run(f'«___» __________ {year} г.')
-    set_font(run, size=16)
 
 
 def generate_title_page_docx(
@@ -123,6 +68,11 @@ def generate_title_page_docx(
     department_name: str,
     city: str,
     year: int,
+    udk: str,
+    compiler_name: str,
+    reviewer_name: str,
+    reviewer_degree: str,
+    description: str,
 ) -> str:
     output_dir = os.path.join(tempfile.gettempdir(), "title_pages")
     os.makedirs(output_dir, exist_ok=True)
@@ -133,10 +83,10 @@ def generate_title_page_docx(
     doc = Document()
 
     section = doc.sections[0]
-    section.top_margin = Cm(2)
-    section.bottom_margin = Cm(2)
-    section.left_margin = Cm(3)
-    section.right_margin = Cm(1.5)
+    section.top_margin = Cm(3)
+    section.bottom_margin = Cm(2.25)
+    section.left_margin = Cm(2.2)
+    section.right_margin = Cm(2.3)
 
     normal_style = doc.styles["Normal"]
     normal_style.font.name = "Times New Roman"
@@ -145,39 +95,50 @@ def generate_title_page_docx(
 
     clean_department_name = normalize_department_name(department_name)
 
-    add_paragraph(
-        doc,
-        MINISTRY_NAME,
-        align=WD_ALIGN_PARAGRAPH.CENTER,
-        size=16,
-        bold=True,
-        space_after=4,
-    )
-    add_paragraph(
-        doc,
-        UNIVERSITY_FULL_NAME,
-        align=WD_ALIGN_PARAGRAPH.CENTER,
-        size=16,
-        space_after=4,
-    )
-    add_paragraph(
-        doc,
-        UNIVERSITY_SHORT_NAME,
-        align=WD_ALIGN_PARAGRAPH.CENTER,
-        size=16,
-        space_after=12,
-    )
+    # =========================
+    # 1 СТРАНИЦА
+    # =========================
+    add_paragraph(doc, MINISTRY_NAME, align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+    add_paragraph(doc, UNIVERSITY_FULL_NAME, align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+    add_paragraph(doc, UNIVERSITY_SHORT_NAME, align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
     add_paragraph(
         doc,
         f"Кафедра {clean_department_name}",
         align=WD_ALIGN_PARAGRAPH.CENTER,
         size=16,
-        space_after=28,
     )
 
-    add_approval_block(doc, year)
+    # Блок УТВЕРЖДАЮ
+    add_empty_paragraphs(doc, 1)
 
-    add_paragraph(doc, "", space_after=70)
+    add_paragraph(
+        doc,
+        "УТВЕРЖДАЮ",
+        align=WD_ALIGN_PARAGRAPH.RIGHT,
+        size=16,
+        bold=True,
+    )
+    add_paragraph(
+        doc,
+        "Заведующий кафедрой __________",
+        align=WD_ALIGN_PARAGRAPH.RIGHT,
+        size=16,
+    )
+    add_paragraph(
+        doc,
+        "______________________________",
+        align=WD_ALIGN_PARAGRAPH.RIGHT,
+        size=16,
+    )
+    add_paragraph(
+        doc,
+        '"____" __________ 20____ г.',
+        align=WD_ALIGN_PARAGRAPH.RIGHT,
+        size=16,
+    )
+
+    # Подгонка вниз до заголовка
+    add_empty_paragraphs(doc, 3)
 
     add_paragraph(
         doc,
@@ -185,28 +146,127 @@ def generate_title_page_docx(
         align=WD_ALIGN_PARAGRAPH.CENTER,
         size=16,
         bold=True,
-        space_after=14,
+        space_after=6,
     )
 
     add_paragraph(
         doc,
         (
-            "Методические указания для выполнения лабораторной работы "
-            f'по дисциплине «{discipline_name}» для {audience} '
+            f"Методические указания для выполнения лабораторной работы "
+            f"по дисциплине «{discipline_name}» для {audience} "
             f"направления подготовки {direction_code} {direction_name}"
         ),
         align=WD_ALIGN_PARAGRAPH.CENTER,
         size=16,
-        space_after=0,
+        line_spacing=1.0,
     )
 
-    add_paragraph(doc, "", space_after=220)
+    # ВОТ ЭТОТ БЛОК ГЛАВНЫЙ:
+    # именно он опускает "Курск - год" вниз страницы
+    add_empty_paragraphs(doc, 7)
 
     add_paragraph(
         doc,
         f"{city} - {year}",
         align=WD_ALIGN_PARAGRAPH.CENTER,
         size=16,
+    )
+
+    # =========================
+    # 2 СТРАНИЦА
+    # =========================
+    doc.add_page_break()
+
+    add_paragraph(doc, f"УДК  {udk}", size=16, space_after=0)
+    add_paragraph(doc, f"Составитель:  {compiler_name}", size=16, space_after=6)
+
+    add_paragraph(doc, "Рецензент", size=16, space_after=0)
+    add_paragraph(
+        doc,
+        f"{reviewer_degree}  {reviewer_name}",
+        size=16,
+        space_after=6,
+    )
+
+    add_paragraph(
+        doc,
+        (
+            f"{manual_title}: методические указания для выполнения  лабораторной работы "
+            f"по дисциплине «{discipline_name}» для {audience} "
+            f"направления подготовки {direction_code} {direction_name}/ "
+            f"Юго-Зап. гос. ун-т; сост. {compiler_name}. "
+            f"{city}, {year}. 19 с."
+        ),
+        size=16,
+        line_spacing=1.0,
+        space_after=6,
+    )
+
+    add_paragraph(
+        doc,
+        (
+            f"Составлены в соответствии с федеральным государственным образовательным стандартом "
+            f"высшего образования направления подготовки {direction_code} {direction_name} "
+            f"и на основании учебного плана направления подготовки {direction_code} {direction_name}."
+        ),
+        size=16,
+        line_spacing=1.0,
+        space_after=6,
+    )
+
+    add_paragraph(
+        doc,
+        description,
+        size=16,
+        line_spacing=1.0,
+        space_after=6,
+    )
+
+    add_paragraph(
+        doc,
+        (
+            f"Предназначены для {audience}, обучающихся направления подготовки "
+            f"{direction_code} {direction_name} "
+            f"(профиль «Разработка программноинформационных систем») всех форм обучения."
+        ),
+        size=16,
+        line_spacing=1.0,
+        space_after=8,
+    )
+
+    add_paragraph(
+        doc,
+        "Текст печатается в авторской редакции",
+        size=16,
+        space_after=12,
+    )
+
+    add_paragraph(
+        doc,
+        (
+            "Подписано в печать __________. Формат 60x84 1/16. "
+            "Усл. печ. л. ____. Уч.-изд. л. 2,0. "
+            "Тираж ___ экз. Заказ ________. Бесплатно."
+        ),
+        size=16,
+        line_spacing=1.0,
+        space_after=6,
+    )
+
+    add_paragraph(
+        doc,
+        "Юго-Западный государственный университет.",
+        size=16,
+        line_spacing=1.0,
+        space_after=0,
+    )
+
+    add_paragraph(
+        doc,
+        "305040, г. Курск, ул. 50 лет Октября, 94.",
+        size=16,
+        line_spacing=1.0,
+        space_after=0,
     )
 
     doc.save(output_path)

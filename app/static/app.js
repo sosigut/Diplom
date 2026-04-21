@@ -76,9 +76,9 @@ async function apiFetch(url, options = {}, retry = true) {
     try {
       await refreshAccessToken();
       return apiFetch(url, options, false);
-    } catch (e) {
+    } catch (error) {
       clearTokens();
-      throw e;
+      throw error;
     }
   }
 
@@ -97,8 +97,36 @@ function activateSection(sectionId) {
   document.querySelectorAll(".section").forEach((el) => el.classList.remove("active"));
   document.querySelectorAll(".nav-btn").forEach((el) => el.classList.remove("active"));
 
-  document.getElementById(sectionId).classList.add("active");
+  document.getElementById(sectionId)?.classList.add("active");
   document.querySelector(`.nav-btn[data-section="${sectionId}"]`)?.classList.add("active");
+}
+
+function initDescriptionControl() {
+  const description = $("title-description");
+  const counter = $("title-description-counter");
+
+  if (!description || !counter) {
+    return;
+  }
+
+  const maxLength = Number(description.getAttribute("maxlength")) || 1000;
+
+  const updateCounter = () => {
+    if (description.value.length > maxLength) {
+      description.value = description.value.slice(0, maxLength);
+    }
+
+    const current = description.value.length;
+    counter.textContent = `${current} / ${maxLength}`;
+    counter.classList.toggle("limit", current >= maxLength);
+  };
+
+  description.addEventListener("input", updateCounter);
+  description.addEventListener("paste", () => {
+    requestAnimationFrame(updateCounter);
+  });
+
+  updateCounter();
 }
 
 async function handleLogin(event) {
@@ -257,7 +285,7 @@ async function loadManuals() {
     return;
   }
 
-  $("manuals-list").innerHTML = data.map(item => `
+  $("manuals-list").innerHTML = data.map((item) => `
     <div class="manual-item">
       <div>
         <div><strong>${item.manual_name || item.file_name || "Методичка"}</strong></div>
@@ -276,6 +304,7 @@ async function loadManuals() {
 
 async function handleFacultyStat(event) {
   event.preventDefault();
+
   const code = $("stat-faculty-code").value;
   const from = $("stat-faculty-from").value;
   const to = $("stat-faculty-to").value;
@@ -300,6 +329,7 @@ async function handleFacultyStat(event) {
 
 async function handleDepartmentStat(event) {
   event.preventDefault();
+
   const code = $("stat-department-code").value;
   const from = $("stat-department-from").value;
   const to = $("stat-department-to").value;
@@ -324,6 +354,7 @@ async function handleDepartmentStat(event) {
 
 async function handleUserStat(event) {
   event.preventDefault();
+
   const fio = encodeURIComponent($("stat-user-fio").value.trim());
   const from = $("stat-user-from").value;
   const to = $("stat-user-to").value;
@@ -405,30 +436,43 @@ async function handleTitlePageGenerate(event) {
     return;
   }
 
+  const descriptionValue = $("title-description")?.value.trim() || "";
+
   const payload = {
-  manual_title: $("title-manual-title")?.value.trim(),
-  discipline_name: $("title-discipline-name")?.value.trim(),
-  audience: $("title-audience")?.value,
-  direction_code: $("title-direction-code")?.value.trim(),
-  direction_name: $("title-direction-name")?.value.trim(),
-  city: $("title-city")?.value.trim(),
-  year: Number($("title-year")?.value),
-  output_filename: $("title-output-filename")?.value.trim(),
+    manual_title: $("title-manual-title")?.value.trim(),
+    discipline_name: $("title-discipline-name")?.value.trim(),
+    audience: $("title-audience")?.value,
+    direction_code: $("title-direction-code")?.value.trim(),
+    direction_name: $("title-direction-name")?.value.trim(),
+    city: $("title-city")?.value.trim(),
+    year: Number($("title-year")?.value),
+    udk: $("title-udk")?.value.trim(),
+    compiler_name: $("title-compiler")?.value.trim(),
+    reviewer_name: $("title-reviewer")?.value.trim(),
+    reviewer_degree: $("title-reviewer-degree")?.value.trim(),
+    description: descriptionValue,
   };
 
-  console.log("TITLE PAGE REQUEST", payload);
-
   if (
-  !payload.manual_title ||
-  !payload.discipline_name ||
-  !payload.audience ||
-  !payload.direction_code ||
-  !payload.direction_name ||
-  !payload.city ||
-  !payload.year ||
-  !payload.output_filename
+    !payload.manual_title ||
+    !payload.discipline_name ||
+    !payload.audience ||
+    !payload.direction_code ||
+    !payload.direction_name ||
+    !payload.city ||
+    !payload.year ||
+    !payload.udk ||
+    !payload.compiler_name ||
+    !payload.reviewer_name ||
+    !payload.reviewer_degree ||
+    !payload.description
   ) {
     showMessage("Заполните все поля титульного листа", "error");
+    return;
+  }
+
+  if (payload.description.length > 1000) {
+    showMessage("Описание не должно превышать 1000 символов", "error");
     return;
   }
 
@@ -442,11 +486,11 @@ async function handleTitlePageGenerate(event) {
 
     if (Array.isArray(data.detail)) {
       const text = data.detail
-        .map(err => `${err.loc.join(" → ")}: ${err.msg}`)
+        .map((err) => `${err.loc.join(" → ")}: ${err.msg}`)
         .join("; ");
       showMessage(text, "error");
     } else {
-      showMessage(data.detail || "Не удалось сгенерировать титульный лист", "error");
+      showMessage(data.detail || "Ошибка генерации", "error");
     }
     return;
   }
@@ -456,6 +500,7 @@ async function handleTitlePageGenerate(event) {
 
   let fileName = "title_page.docx";
   const disposition = response.headers.get("content-disposition");
+
   if (disposition) {
     const match = disposition.match(/filename="?([^"]+)"?/);
     if (match && match[1]) {
@@ -465,16 +510,18 @@ async function handleTitlePageGenerate(event) {
 
   $("title-page-result").innerHTML = `
     <div class="stat-card">
-      <h3>Титульный лист успешно создан</h3>
-      <p>Файл готов к скачиванию.</p>
+      <h3>Титульный лист создан</h3>
       <div class="actions-row">
-        <a class="link-btn" href="${url}" download="${fileName}">Скачать титульный лист</a>
+        <a class="link-btn" href="${url}" download="${fileName}">
+          Скачать файл
+        </a>
       </div>
     </div>
   `;
 
-  showMessage("Титульный лист сгенерирован", "success");
+  showMessage("Готово", "success");
 }
+
 async function logout() {
   if (state.refreshToken) {
     try {
@@ -515,12 +562,11 @@ function initEvents() {
   $("load-manuals-btn")?.addEventListener("click", loadManuals);
 }
 
-console.log("APP JS LOADED");
-
 async function bootstrap() {
   updateAuthStatus();
   initNavigation();
   initEvents();
+  initDescriptionControl();
 
   const yearInput = $("title-year");
   if (yearInput && !yearInput.value) {
