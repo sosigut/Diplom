@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Система проверки методичек</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/styles.css?v=checkloading2" />
 </head>
 <body>
   <div class="layout">
@@ -35,7 +35,7 @@
     <main class="content">
       <header class="page-header">
         <div>
-          <h1>Система автономной проверки методичек</h1>
+          <h1>Система автономной проверки файлов</h1>
           <p>Загрузка файлов, проверка оформления, PDF-отчёт и статистика</p>
         </div>
 
@@ -75,10 +75,10 @@
               <input type="password" id="register-password" required />
 
               <label for="register-faculty-code">Код факультета</label>
-              <input type="number" id="register-faculty-code" required />
+              <input type="text" id="register-faculty-code" placeholder="09.03.04" />
 
-              <label for="register-department-code">Код кафедры</label>
-              <input type="number" id="register-department-code" required />
+              <label for="register-department-name">Название кафедры</label>
+              <input type="text" id="register-department-name" required />
 
               <label for="register-role">Роль</label>
               <select id="register-role" required>
@@ -103,89 +103,189 @@
       </section>
 
       <section id="check-section" class="card section">
-        <h2>Проверка методички</h2>
+          <h2>Система проверки файлов</h2>
 
-        <div class="panel">
-          <form id="check-form">
-            <label for="manual-file">Выберите .doc или .docx файл</label>
-            <input type="file" id="manual-file" accept=".doc,.docx" required />
-            <button type="submit" class="primary-btn">Проверить методичку</button>
-          </form>
-        </div>
+          <div class="panel">
+              <form id="check-form">
+                  <label for="manual-file">Выберите .doc или .docx файл</label>
+                  <input type="file" id="manual-file" accept=".doc,.docx" required />
+                  <button type="submit" class="primary-btn">Проверить файл</button>
+              </form>
 
-        <div id="check-result" class="result-box empty-state">
-          Здесь появится результат проверки
-        </div>
-
-        <div class="panel">
-          <div class="panel-header">
-            <h3>Мои методички</h3>
-            <button id="load-manuals-btn" type="button" class="secondary-btn">Обновить список</button>
+              <div id="check-loading" class="loading-box" hidden>
+                  <div class="loader"></div>
+                  <div class="loading-content">
+                      <div id="check-loading-title" class="loading-title">
+                          Идёт проверка файла...
+                      </div>
+                      <div id="check-loading-text" class="loading-text">
+                          Пожалуйста, подождите
+                      </div>
+                  </div>
+              </div>
           </div>
-          <div id="manuals-list" class="empty-state">Список пока пуст</div>
-        </div>
+
+          <div id="check-result" class="result-box empty-state">
+              Здесь появится результат проверки
+          </div>
+
+          <div class="panel" style="margin-top: 20px;">
+              <div class="panel-header">
+                  <h3>Мои файлы</h3>
+                  <button id="load-manuals-btn" type="button" class="secondary-btn">Обновить список</button>
+              </div>
+              <div id="manuals-list" class="empty-state">Список пока пуст</div>
+          </div>
       </section>
 
       <section id="title-page-section" class="card section">
         <h2>Генерация титульного листа</h2>
 
         <form id="title-page-form">
-          <div class="grid two">
-            <div class="panel">
-              <h3>Первая страница</h3>
+          <label for="title-doc-type">Тип титульного листа</label>
+          <select id="title-doc-type" required>
+            <option value="manual">Методические указания</option>
+            <option value="tutorial">Учебное пособие</option>
+          </select>
 
-              <label for="title-manual-title">Название методички</label>
-              <input type="text" id="title-manual-title" required />
+          <!-- МЕТОДИЧЕСКИЕ УКАЗАНИЯ -->
+          <div id="manual-title-block" style="margin-top: 18px;">
+            <div class="grid two">
+              <div class="panel">
+                <h3>Методические указания — первая страница</h3>
 
-              <label for="title-discipline-name">Название дисциплины</label>
-              <input type="text" id="title-discipline-name" required />
+                <label for="title-manual-title">Название методички</label>
+                <input type="text" id="title-manual-title" required />
 
-              <label for="title-audience">Для кого</label>
-              <select id="title-audience" required>
-                <option value="студентов">Студентов</option>
-                <option value="магистров">Магистров</option>
-              </select>
+                <label for="title-discipline-name">Название дисциплины</label>
+                <input type="text" id="title-discipline-name" required />
 
-              <label for="title-direction-code">Код направления</label>
-              <input type="text" id="title-direction-code" required />
+                <label for="title-audience">Для кого</label>
+                <select id="title-audience" required>
+                  <option value="студентов">Студентов</option>
+                  <option value="магистров">Магистров</option>
+                </select>
 
-              <label for="title-direction-name">Название направления</label>
-              <input type="text" id="title-direction-name" required />
+                <label for="title-direction-code">Код направления</label>
+                <input type="text" id="title-direction-code" placeholder = "09.03.04" required />
 
-              <label for="title-city">Город</label>
-              <input type="text" id="title-city" value="Курск" required />
+                <label for="title-direction-name">Название направления</label>
+                <input type="text" id="title-direction-name" required />
 
-              <label for="title-year">Год</label>
-              <input type="number" id="title-year" required />
+                <label for="title-city">Город</label>
+                <input type="text" id="title-city" value="Курск" required />
+
+                <label for="title-year">Год</label>
+                <input type="number" id="title-year" required />
+              </div>
+
+              <div class="panel">
+                <h3>Методические указания — вторая страница</h3>
+
+                <label for="title-udk">УДК</label>
+                <input type="text" id="title-udk" required />
+
+                <label for="title-compiler">ФИО составителя</label>
+                <input type="text" id="title-compiler" required />
+
+                <label for="title-reviewer">ФИО рецензента</label>
+                <input type="text" id="title-reviewer" required />
+
+                <label for="title-reviewer-degree">Степень рецензента</label>
+                <input type="text" id="title-reviewer-degree" required />
+
+                <label for="title-description">Краткое описание</label>
+                <div class="textarea-field">
+                  <textarea
+                    id="title-description"
+                    name="title-description"
+                    maxlength="1000"
+                    required
+                    placeholder="Введите краткое описание"
+                  ></textarea>
+                  <div class="textarea-footer">
+                    <small class="field-hint">Не более 1000 символов</small>
+                    <span id="title-description-counter" class="char-counter">0 / 1000</span>
+                  </div>
+                </div>
+              </div>
             </div>
+          </div>
 
-            <div class="panel">
-              <h3>Вторая страница</h3>
+          <!-- УЧЕБНОЕ ПОСОБИЕ -->
+          <div id="tutorial-title-block" style="display: none; margin-top: 18px;">
+            <div class="grid two">
+              <div class="panel">
+                <h3>Учебное пособие — первая страница</h3>
 
-              <label for="title-udk">УДК</label>
-              <input type="text" id="title-udk" required />
+                <label for="tutorial-author-name">ФИО автора</label>
+                <input type="text" id="tutorial-author-name" />
 
-              <label for="title-compiler">ФИО составителя</label>
-              <input type="text" id="title-compiler" required />
+                <label for="tutorial-title">Название учебного пособия</label>
+                <input type="text" id="tutorial-title" />
 
-              <label for="title-reviewer">ФИО рецензента</label>
-              <input type="text" id="title-reviewer" required />
+                <label for="tutorial-city">Город</label>
+                <input type="text" id="tutorial-city" value="Курск" />
 
-              <label for="title-reviewer-degree">Степень рецензента</label>
-              <input type="text" id="title-reviewer-degree" required />
+                <label for="tutorial-year">Год</label>
+                <input type="number" id="tutorial-year" />
+              </div>
 
-              <label for="title-description">Краткое описание</label>
-              <div class="textarea-field">
-                <textarea
-                  id="title-description"
-                  name="title-description"
-                  maxlength="1000"
-                  required
-                  placeholder="Введите краткое описание"
-                ></textarea>
-                <div class="textarea-footer">
-                  <small class="field-hint">Не более 1000 символов</small>
-                  <span id="title-description-counter" class="char-counter">0 / 1000</span>
+              <div class="panel">
+                <h3>Учебное пособие — вторая страница</h3>
+
+                <div id="tutorial-reviewers-container">
+                  <div class="tutorial-reviewer-item">
+                    <label>Ученая степень, должность рецензента</label>
+                    <input type="text" class="tutorial-reviewer-degree" />
+
+                    <label>ФИО рецензента</label>
+                    <input type="text" class="tutorial-reviewer-fio" />
+                  </div>
+                </div>
+
+                <div class="form-actions">
+                  <button type="button" id="add-reviewer-btn" class="secondary-btn">Добавить рецензента</button>
+                </div>
+
+                <label for="tutorial-a-value">Значение А</label>
+                <input type="text" id="tutorial-a-value" placeholder="Например: 67 или А 67" />
+
+                <label for="tutorial-isbn">Значение ISBN</label>
+                <input type="text" id="tutorial-isbn" />
+
+                <div id="tutorial-directions-container">
+                  <div class="tutorial-direction-item">
+                    <label>Код направления</label>
+                    <input type="text" class="tutorial-direction-code" placeholder="09.03.04" />
+
+                    <label>Название факультета / укрупненной группы</label>
+                    <input type="text" class="tutorial-direction-name" />
+                  </div>
+                </div>
+
+                <div class="form-actions">
+                  <button type="button" id="add-direction-btn" class="secondary-btn">Добавить направление</button>
+                </div>
+
+                <label for="tutorial-udk">Значение УДК</label>
+                <input type="text" id="tutorial-udk" />
+
+                <label for="tutorial-bbk">Значение ББК</label>
+                <input type="text" id="tutorial-bbk" />
+
+                <label for="tutorial-description">Краткое описание учебного пособия</label>
+                <div class="textarea-field">
+                  <textarea
+                    id="tutorial-description"
+                    name="tutorial-description"
+                    maxlength="500"
+                    placeholder="Введите краткое описание учебного пособия"
+                  ></textarea>
+                  <div class="textarea-footer">
+                    <small class="field-hint">Не более 500 символов</small>
+                    <span id="tutorial-description-counter" class="char-counter">0 / 500</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -209,7 +309,7 @@
             <h3>По факультету</h3>
             <form id="faculty-stat-form">
               <label for="stat-faculty-code">Код факультета</label>
-              <input type="number" id="stat-faculty-code" required />
+              <input type="text" id="stat-faculty-code" placeholder="09.03.04" />
 
               <label for="stat-faculty-from">Дата от</label>
               <input type="date" id="stat-faculty-from" required />
@@ -224,8 +324,8 @@
           <div class="panel">
             <h3>По кафедре</h3>
             <form id="department-stat-form">
-              <label for="stat-department-code">Код кафедры</label>
-              <input type="number" id="stat-department-code" required />
+              <label for="stat-department-name">Название кафедры</label>
+              <input type="text" id="stat-department-name" required />
 
               <label for="stat-department-from">Дата от</label>
               <input type="date" id="stat-department-from" required />
@@ -270,7 +370,7 @@
               <input type="text" id="faculty-name" required />
 
               <label for="faculty-code">Код факультета</label>
-              <input type="number" id="faculty-code" required />
+              <input type="text" id="faculty-code" placeholder="09.03.04" />
 
               <label for="dean-fio">ФИО декана</label>
               <input type="text" id="dean-fio" required />
@@ -285,11 +385,8 @@
               <label for="department-name">Название кафедры</label>
               <input type="text" id="department-name" required />
 
-              <label for="department-code">Код кафедры</label>
-              <input type="number" id="department-code" required />
-
               <label for="department-faculty-code">Код факультета</label>
-              <input type="number" id="department-faculty-code" required />
+              <input type="text" id="department-faculty-code" placeholder="09.03.04" />
 
               <button type="submit" class="primary-btn">Создать кафедру</button>
             </form>
@@ -297,10 +394,10 @@
         </div>
       </section>
 
-      <div id="global-message" class="toast hidden"></div>
+      <div id="global-message" class="toast" style="display: none;"></div>
     </main>
   </div>
 
-  <script src="/static/app.js?v=titlepage5"></script>
+  <script src="/static/app.js?v=titlepage10"></script>
 </body>
 </html>

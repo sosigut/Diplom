@@ -9,8 +9,8 @@ class Manual(Base):
     id_manual = Column(Integer, primary_key=True, index=True)
     manual_name = Column(String(255), nullable=False)
     fio_user = Column(String(255), nullable=False)
-    department_code = Column(Integer, nullable=False)
-    faculty_code = Column(Integer, nullable=False)
+    faculty_code = Column(String(10), nullable=False)  # теперь строка вида __.__.__
+    department_name = Column(String(255), nullable=False)  # добавляем название кафедры
     file_hash = Column(String(64), nullable=False, unique=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
 

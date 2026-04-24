@@ -21,9 +21,9 @@ WD_WITHIN_TABLE = 12
 WD_HEADER_FOOTER_PRIMARY = 1
 WD_LINE_SPACE_SINGLE = 0
 WD_STATISTIC_PAGES = 2
+WD_ACTIVE_END_PAGE_NUMBER = 3
 
 WD_COLOR_RED = 255
-WD_COLOR_YELLOW = 7
 WD_FIELD_PAGE = 33
 
 
@@ -49,24 +49,16 @@ class CheckReport:
         if not self.issues:
             return "✅ Ошибок не найдено."
 
-        self.issues.sort(key=lambda x: (x.priority, x.severity, x.location))
+        self.issues.sort(key=lambda x: (x.priority, x.location))
 
         lines = []
         for i, issue in enumerate(self.issues, 1):
-            icon = {"ERROR": "❌", "WARNING": "⚠️", "INFO": "ℹ️"}.get(issue.severity, "")
-            lines.append(f"{icon} Ошибка #{i}")
+            lines.append(f"❌ Ошибка #{i}")
             lines.append(f"   📌 Раздел: {issue.rule}")
             lines.append(f"   📍 Где: {issue.location}")
-            lines.append(f"   💬 Проблема: {issue.message}")
+            lines.append(f"   💬 Что нужно исправить: {issue.message}")
             lines.append("")
         return "\n".join(lines)
-
-    def summary(self):
-        errors = sum(1 for x in self.issues if x.severity == "ERROR")
-        warnings = sum(1 for x in self.issues if x.severity == "WARNING")
-
-        return f"\n❌ Ошибки: {errors}\n⚠️ Предупреждения: {warnings}"
-
 
 class WordMethodicalChecker:
     def __init__(self, visible: bool = False, mark_document: bool = True):
@@ -119,8 +111,8 @@ class WordMethodicalChecker:
 
         return report, checked_path
 
-    # ===== ПОДСВЕТКА БЛОКА =====
-    def _mark_range(self, doc, start_par, end_par, severity, message):
+    # ===== ПОДСВЕТКА =====
+    def _mark_range(self, doc, start_par, end_par, message):
         if not self.mark_document:
             return
 
@@ -129,16 +121,12 @@ class WordMethodicalChecker:
             end = doc.Paragraphs(end_par).Range.End
             rng = doc.Range(start, end)
 
-            if severity == "ERROR":
-                rng.Font.Color = WD_COLOR_RED
-            else:
-                rng.HighlightColorIndex = WD_COLOR_YELLOW
-
+            rng.Font.Color = WD_COLOR_RED
             doc.Comments.Add(rng, message)
         except Exception:
             pass
 
-    def _mark_page(self, doc, page, severity, message):
+    def _mark_page(self, doc, page, message):
         if not self.mark_document:
             return
 
@@ -150,53 +138,13 @@ class WordMethodicalChecker:
                 end = doc.Content.End
 
             rng = doc.Range(start, end)
-
-            if severity == "ERROR":
-                rng.Font.Color = WD_COLOR_RED
-            else:
-                rng.HighlightColorIndex = WD_COLOR_YELLOW
-
+            rng.Font.Color = WD_COLOR_RED
             doc.Comments.Add(rng, message)
         except Exception:
             pass
 
-    # ===== ГРУППИРОВКА АБЗАЦЕВ =====
-    def _group_paragraphs(self, doc, report, data, severity, message):
-        if not data:
-            return
-
-        current = None
-
-        for par, page in data:
-            if not current:
-                current = [par, par, page, page]
-            elif par == current[1] + 1:
-                current[1] = par
-                current[3] = page
-            else:
-                self._flush_group(doc, report, current, severity, message)
-                current = [par, par, page, page]
-
-        if current:
-            self._flush_group(doc, report, current, severity, message)
-
-    def _flush_group(self, doc, report, group, severity, message):
-        start_par, end_par, start_page, end_page = group
-
-        location = f"Абзац {start_par} (стр. {start_page}) - Абзац {end_par} (стр. {end_page})"
-
-        report.issues.append(CheckIssue(
-            rule="3",
-            severity=severity,
-            location=location,
-            message=message,
-            priority=1
-        ))
-
-        self._mark_range(doc, start_par, end_par, severity, message)
-
     # ===== ГРУППИРОВКА СТРАНИЦ =====
-    def _group_pages(self, doc, report, pages, severity, message):
+    def _group_pages(self, doc, report, pages, message, rule="3", priority=1):
         pages = sorted(set(pages))
         if not pages:
             return
@@ -207,16 +155,18 @@ class WordMethodicalChecker:
             if p != prev + 1:
                 loc = f"Стр. {start} - Стр. {prev}"
 
-                report.issues.append(CheckIssue(
-                    rule="3",
-                    severity=severity,
-                    location=loc,
-                    message=message,
-                    priority=1
-                ))
+                report.issues.append(
+                    CheckIssue(
+                        rule=rule,
+                        severity="ERROR",
+                        location=loc,
+                        message=message,
+                        priority=priority,
+                    )
+                )
 
                 for pg in range(start, prev + 1):
-                    self._mark_page(doc, pg, severity, message)
+                    self._mark_page(doc, pg, message)
 
                 if p is not None:
                     start = p
@@ -249,9 +199,9 @@ class WordMethodicalChecker:
             except Exception:
                 pass
 
-            page = p.Range.Information(3)
+            page = p.Range.Information(WD_ACTIVE_END_PAGE_NUMBER)
 
-            # ===== ОТСТУП =====
+            # ===== ОТСТУП ПЕРВОЙ СТРОКИ =====
             indent = p.Range.ParagraphFormat.FirstLineIndent
             if abs(indent) < 0.01:
                 try:
@@ -286,7 +236,6 @@ class WordMethodicalChecker:
                         if not w_text:
                             continue
 
-
                         if w_text in {".", ",", ";", ":", "-", "–", "—", "(", ")", "[", "]", "{", "}", "/", "\\"}:
                             continue
 
@@ -316,11 +265,53 @@ class WordMethodicalChecker:
             if spacing != WD_LINE_SPACE_SINGLE:
                 spacing_pages.append(page)
 
-        # Группировка по страницам
-        self._group_pages(doc, report, font_pages, "ERROR", "Неверный шрифт")
-        self._group_pages(doc, report, size_pages, "WARNING", "Размер не 16 pt")
-        self._group_pages(doc, report, indent_pages, "ERROR", "Отступ не 1.25 см")
-        self._group_pages(doc, report, spacing_pages, "WARNING", "Интервал не одинарный")
+        self._group_pages(
+            doc,
+            report,
+            font_pages,
+            (
+                "В основном тексте используется неверный шрифт. "
+                "Необходимо установить шрифт Times New Roman для всего основного текста документа."
+            ),
+            rule="3",
+            priority=1,
+        )
+
+        self._group_pages(
+            doc,
+            report,
+            size_pages,
+            (
+                "В основном тексте используется неверный размер шрифта. "
+                "Необходимо установить размер шрифта 16 pt для всего основного текста документа."
+            ),
+            rule="3",
+            priority=1,
+        )
+
+        self._group_pages(
+            doc,
+            report,
+            indent_pages,
+            (
+                "Обнаружен неверный абзацный отступ первой строки. "
+                "Необходимо установить отступ первой строки 1,25 см."
+            ),
+            rule="3",
+            priority=1,
+        )
+
+        self._group_pages(
+            doc,
+            report,
+            spacing_pages,
+            (
+                "Обнаружен неверный межстрочный интервал. "
+                "Необходимо установить одинарный межстрочный интервал для основного текста документа."
+            ),
+            rule="3",
+            priority=1,
+        )
 
     # ===== ПОЛЯ =====
     def _check_margins(self, doc, report):
@@ -338,7 +329,18 @@ class WordMethodicalChecker:
             ):
                 pages.append(i)
 
-        self._group_pages(doc, report, pages, "ERROR", "Ошибка полей")
+        self._group_pages(
+            doc,
+            report,
+            pages,
+            (
+                "Обнаружены неверные размеры полей страницы. "
+                "Необходимо установить поля документа: верхнее — 3 см, "
+                "нижнее — 2,25 см, левое — 2,2 см, правое — 2,3 см."
+            ),
+            rule="3",
+            priority=1,
+        )
 
     # ===== НУМЕРАЦИЯ =====
     def _check_page_numbers(self, doc, report):
@@ -360,9 +362,15 @@ class WordMethodicalChecker:
                     try:
                         para = f.Result.Paragraphs(1)
                         if int(para.Alignment) != WD_ALIGN_CENTER:
-                            issues.append("номер страницы не по центру")
+                            issues.append(
+                                "Номер страницы расположен в верхнем колонтитуле, но выровнен не по центру. "
+                                "Необходимо выровнять номер страницы строго по центру."
+                            )
                     except Exception:
-                        issues.append("не удалось определить выравнивание номера страницы")
+                        issues.append(
+                            "Не удалось определить выравнивание номера страницы. "
+                            "Проверьте, что номер страницы расположен сверху и строго по центру."
+                        )
 
             if footer.PageNumbers.Count > 0:
                 found_bottom = True
@@ -370,21 +378,24 @@ class WordMethodicalChecker:
         loc = f"Стр. 1 - Стр. {total}"
 
         if not found_top and not found_bottom:
-            report.issues.append(CheckIssue("4", "ERROR", loc, "Нет нумерации", 1))
-            self._mark_page(doc, 1, "ERROR", "Нет нумерации")
+            message = (
+                "Нумерация страниц отсутствует. "
+                "Необходимо добавить номер страницы в верхней части страницы и выровнять его по центру."
+            )
+            report.issues.append(CheckIssue("4", "ERROR", loc, message, 1))
+            self._mark_page(doc, 1, message)
             return
 
         if not found_top and found_bottom:
-            report.issues.append(CheckIssue(
-                "4",
-                "ERROR",
-                loc,
-                "Номер страницы расположен внизу, должен быть вверху по центру",
-                1
-            ))
-            self._mark_page(doc, 1, "ERROR", "Номер страницы расположен внизу")
+            message = (
+                "Номер страницы расположен внизу страницы. "
+                "По требованиям номер страницы должен находиться вверху страницы и быть выровнен по центру."
+            )
+            report.issues.append(CheckIssue("4", "ERROR", loc, message, 1))
+            self._mark_page(doc, 1, message)
             return
 
         if issues:
-            report.issues.append(CheckIssue("4", "ERROR", loc, "; ".join(issues), 1))
-            self._mark_page(doc, 1, "ERROR", "Ошибка нумерации")
+            message = " ".join(issues)
+            report.issues.append(CheckIssue("4", "ERROR", loc, message, 1))
+            self._mark_page(doc, 1, message)

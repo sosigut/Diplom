@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.models import Department, Faculty
 from app.models.manual import Manual
 from app.models.user import User
 from app.service.checker import WordMethodicalChecker
@@ -84,7 +85,10 @@ async def check_document(
         raise HTTPException(status_code=400, detail="Файл не выбран")
 
     if not file.filename.lower().endswith((".doc", ".docx")):
-        raise HTTPException(status_code=400, detail="Поддерживаются только .doc и .docx")
+        raise HTTPException(
+            status_code=400,
+            detail="Поддерживаются только файлы формата .doc и .docx",
+        )
 
     temp_dir = tempfile.mkdtemp()
     temp_path = os.path.join(temp_dir, file.filename)
@@ -105,7 +109,6 @@ async def check_document(
         shutil.copy2(checked_path, saved_checked_path)
 
         has_problems = len(report.issues) > 0
-
         pdf_report_url = None
 
         if has_problems:
@@ -119,54 +122,44 @@ async def check_document(
             )
 
             pdf_report_url = str(request.url_for("open_pdf_report", filename=pdf_filename))
-
         else:
             file_hash = calculate_file_hash(temp_path)
             existing_manual = db.query(Manual).filter(Manual.file_hash == file_hash).first()
 
             if not existing_manual:
+                department = db.query(Department).filter(Department.id_department == current_user.id_department).first()
+                faculty = db.query(Faculty).filter(Faculty.id_faculty == current_user.id_faculty).first()
+
                 manual = Manual(
                     manual_name=file.filename,
                     fio_user=current_user.fio,
-                    department_code=current_user.id_department,
-                    faculty_code=current_user.id_faculty,
+                    faculty_code=faculty.faculty_code if faculty else "",
+                    department_name=department.department_name if department else "",
                     file_hash=file_hash,
                 )
                 db.add(manual)
                 db.commit()
 
-        checked_file_url = str(request.url_for("download_checked_file", filename=checked_filename))
+        checked_file_url = str(
+            request.url_for("download_checked_file", filename=checked_filename)
+        )
 
         return {
             "message": "Проверка завершена",
             "has_errors": has_problems,
-            "errors_count": sum(1 for issue in report.issues if issue.severity == "ERROR"),
-            "warnings_count": sum(1 for issue in report.issues if issue.severity == "WARNING"),
+            "errors_count": len(report.issues),
+            "warnings_count": 0,
             "checked_file_url": checked_file_url,
             "pdf_report_url": pdf_report_url,
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка проверки документа: {str(e)}")
-
     finally:
-        file.file.close()
-
-@router.get("/my")
-def get_my_manuals(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    manuals = db.query(Manual).filter(Manual.fio_user == current_user.fio).all()
-
-    return [
-        {
-            "id_manual": m.id_manual,
-            "manual_name": m.manual_name,
-            "fio_user": m.fio_user,
-            "department_code": m.department_code,
-            "faculty_code": m.faculty_code,
-            "created_at": getattr(m, "created_at", None),
-        }
-        for m in manuals
-    ]
+        try:
+            file.file.close()
+        except Exception:
+            pass
+        shutil.rmtree(temp_dir, ignore_errors=True)

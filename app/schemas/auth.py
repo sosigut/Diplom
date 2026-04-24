@@ -5,8 +5,8 @@ class UserRegister(BaseModel):
     fio: str = Field(min_length=8, max_length=128)
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    faculty_code: int
-    department_code: int
+    faculty_code: str
+    department_name: str = Field(min_length=2, max_length=255)
     role: str
 
 

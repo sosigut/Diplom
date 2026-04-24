@@ -52,19 +52,17 @@ def create_department(data: DepartmentCreate, db: Session = Depends(get_db)):
         )
 
     existing_department = db.query(Department).filter(
-        (Department.department_code == data.department_code) |
-        (Department.department_name == data.department_name)
+        Department.department_name == data.department_name
     ).first()
 
     if existing_department:
         raise HTTPException(
             status_code=400,
-            detail="Кафедра с таким названием или кодом уже существует"
+            detail="Кафедра с таким названием уже существует"
         )
 
     department = Department(
         department_name=data.department_name,
-        department_code=data.department_code,
         manual_count=0,
         id_faculty=faculty.id_faculty
     )

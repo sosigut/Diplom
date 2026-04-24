@@ -19,7 +19,7 @@ def build_datetime_range(date_from: date, date_to: date):
 
 @router.get("/faculty")
 def count_manuals_by_faculty(
-    faculty_code: int = Query(...),
+    faculty_code: str = Query(..., pattern=r'^\d{2}\.\d{2}\.\d{2}$'),
     date_from: date = Query(...),
     date_to: date = Query(...),
     db: Session = Depends(get_db),
@@ -38,7 +38,7 @@ def count_manuals_by_faculty(
 
     return {
         "entity": "faculty",
-        "value": str(faculty_code),
+        "value": faculty_code,
         "date_from": date_from,
         "date_to": date_to,
         "manual_count": count,
@@ -47,7 +47,7 @@ def count_manuals_by_faculty(
 
 @router.get("/department")
 def count_manuals_by_department(
-    department_code: int = Query(...),
+    department_name: str = Query(...),
     date_from: date = Query(...),
     date_to: date = Query(...),
     db: Session = Depends(get_db),
@@ -59,14 +59,14 @@ def count_manuals_by_department(
     start_dt, end_dt = build_datetime_range(date_from, date_to)
 
     count = db.query(Manual).filter(
-        Manual.department_code == department_code,
+        Manual.department_name == department_name,
         Manual.created_at >= start_dt,
         Manual.created_at <= end_dt,
     ).count()
 
     return {
         "entity": "department",
-        "value": str(department_code),
+        "value": department_name,
         "date_from": date_from,
         "date_to": date_to,
         "manual_count": count,

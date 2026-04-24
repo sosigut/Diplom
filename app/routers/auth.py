@@ -28,7 +28,7 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
         email=user_data.email,
         password=user_data.password,
         faculty_code=user_data.faculty_code,
-        department_code=user_data.department_code,
+        department_name=user_data.department_name,
         role=user_data.role,
     )
 

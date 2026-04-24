@@ -25,7 +25,7 @@ ALLOWED_ROLES = {
 }
 
 
-def register_user(db: Session, fio: str,  email: str, password: str, faculty_code: int, department_code: int, role: str) -> User:
+def register_user(db: Session, fio: str, email: str, password: str, faculty_code: str, department_name: str, role: str) -> User:
     existing_user = db.query(User).filter(User.email == email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Пользователь с таким email уже существует")
@@ -37,9 +37,9 @@ def register_user(db: Session, fio: str,  email: str, password: str, faculty_cod
     if not faculty:
         raise HTTPException(status_code=404, detail="Факультет с таким кодом не найден")
 
-    department = db.query(Department).filter(Department.department_code == department_code).first()
+    department = db.query(Department).filter(Department.department_name == department_name).first()
     if not department:
-        raise HTTPException(status_code=404, detail="Кафедра с таким кодом не найдена")
+        raise HTTPException(status_code=404, detail="Кафедра с таким названием не найдена")
 
     if department.id_faculty != faculty.id_faculty:
         raise HTTPException(status_code=400, detail="Кафедра не принадлежит указанному факультету")

@@ -1,8 +1,11 @@
 import os
 import tempfile
+import re
+
 from uuid import uuid4
 
 from docx import Document
+from docx.enum.section import WD_SECTION_START
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.shared import Pt, Cm
@@ -20,8 +23,14 @@ def set_font(run, size=16, bold=False):
     run.bold = bold
 
 
+def clear_paragraph(paragraph):
+    p = paragraph._element
+    for child in list(p):
+        p.remove(child)
+
+
 def add_paragraph(
-    doc: Document,
+    container,
     text: str = "",
     align: int = WD_ALIGN_PARAGRAPH.LEFT,
     size: int = 16,
@@ -30,7 +39,7 @@ def add_paragraph(
     space_after: int = 0,
     line_spacing: float = 1.0,
 ):
-    p = doc.add_paragraph()
+    p = container.add_paragraph()
     p.alignment = align
     p.paragraph_format.space_before = Pt(space_before)
     p.paragraph_format.space_after = Pt(space_after)
@@ -41,9 +50,9 @@ def add_paragraph(
     return p
 
 
-def add_empty_paragraphs(doc: Document, count: int, size: int = 16):
+def add_empty_paragraphs(container, count: int, size: int = 16):
     for _ in range(count):
-        p = doc.add_paragraph()
+        p = container.add_paragraph()
         p.paragraph_format.space_before = Pt(0)
         p.paragraph_format.space_after = Pt(0)
         p.paragraph_format.line_spacing = 1.0
@@ -58,6 +67,97 @@ def normalize_department_name(name: str) -> str:
         return name[8:].strip()
     return name
 
+
+def set_footer_text(footer, text: str, size: int = 16):
+    paragraph = footer.paragraphs[0]
+    clear_paragraph(paragraph)
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraph.paragraph_format.space_before = Pt(0)
+    paragraph.paragraph_format.space_after = Pt(0)
+    paragraph.paragraph_format.line_spacing = 1.0
+
+    run = paragraph.add_run(text)
+    set_font(run, size=size, bold=False)
+
+
+def set_first_page_footer(section, text: str, size: int = 16):
+    section.different_first_page_header_footer = True
+    set_footer_text(section.first_page_footer, text, size=size)
+    set_footer_text(section.footer, text, size=size)
+
+
+def clear_section_footer(section):
+    section.different_first_page_header_footer = True
+    clear_paragraph(section.first_page_footer.paragraphs[0])
+    clear_paragraph(section.footer.paragraphs[0])
+
+
+def format_tutorial_title(title: str) -> str:
+    title = (title or "").strip()
+    if not title:
+        return title
+    return title[:1].upper() + title[1:].lower()
+
+
+def ensure_a_value_prefix(a_value: str) -> str:
+    value = (a_value or "").strip()
+    if not value:
+        return "А __"
+
+    upper_value = value.upper()
+    if upper_value.startswith("А "):
+        return value
+    if upper_value.startswith("A "):
+        return f"А {value[2:].strip()}"
+    if upper_value == "А" or upper_value == "A":
+        return "А __"
+
+    return f"А {value}"
+
+
+def format_author_name_for_biblio(author_name: str) -> str:
+    """
+    Поддерживает:
+    - Аникина Елена Ивановна -> Е. И. Аникина
+    - Аникина Е. И. -> Е. И. Аникина
+    - Аникина Е.И. -> Е. И. Аникина
+    - Е. И. Аникина -> Е. И. Аникина
+    - Е.И. Аникина -> Е. И. Аникина
+    """
+    text = (author_name or "").strip()
+    if not text:
+        return text
+
+    text = re.sub(r"\s+", " ", text)
+
+    # случай: Е. И. Аникина
+    m = re.match(r"^([А-ЯA-Z])\.\s*([А-ЯA-Z])\.\s*([А-Яа-яA-Za-z\-]+)$", text)
+    if m:
+        n1, n2, surname = m.groups()
+        return f"{n1}. {n2}. {surname}"
+
+    # случай: Е.И. Аникина
+    m = re.match(r"^([А-ЯA-Z])\.([А-ЯA-Z])\.\s*([А-Яа-яA-Za-z\-]+)$", text)
+    if m:
+        n1, n2, surname = m.groups()
+        return f"{n1}. {n2}. {surname}"
+
+    parts = text.split()
+
+    # случай: Аникина Елена Ивановна
+    if len(parts) == 3 and all(len(p) > 1 for p in parts):
+        surname, name, patronymic = parts
+        return f"{name[0]}. {patronymic[0]}. {surname}"
+
+    # случай: Аникина Е. И.
+    if len(parts) == 3 and len(parts[0]) > 1:
+        surname = parts[0]
+        p2 = parts[1].replace(".", "")
+        p3 = parts[2].replace(".", "")
+        if len(p2) == 1 and len(p3) == 1:
+            return f"{p2}. {p3}. {surname}"
+
+    return text
 
 def generate_title_page_docx(
     manual_title: str,
@@ -87,6 +187,7 @@ def generate_title_page_docx(
     section.bottom_margin = Cm(2.25)
     section.left_margin = Cm(2.2)
     section.right_margin = Cm(2.3)
+    section.footer_distance = Cm(1.3)
 
     normal_style = doc.styles["Normal"]
     normal_style.font.name = "Times New Roman"
@@ -95,9 +196,8 @@ def generate_title_page_docx(
 
     clean_department_name = normalize_department_name(department_name)
 
-    # =========================
-    # 1 СТРАНИЦА
-    # =========================
+
+
     add_paragraph(doc, MINISTRY_NAME, align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
     add_paragraph(doc, UNIVERSITY_FULL_NAME, align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
     add_paragraph(doc, UNIVERSITY_SHORT_NAME, align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
@@ -108,7 +208,6 @@ def generate_title_page_docx(
         size=16,
     )
 
-    # Блок УТВЕРЖДАЮ
     add_empty_paragraphs(doc, 1)
 
     add_paragraph(
@@ -137,8 +236,7 @@ def generate_title_page_docx(
         size=16,
     )
 
-    # Подгонка вниз до заголовка
-    add_empty_paragraphs(doc, 3)
+    add_empty_paragraphs(doc, 4)
 
     add_paragraph(
         doc,
@@ -161,21 +259,21 @@ def generate_title_page_docx(
         line_spacing=1.0,
     )
 
-    # ВОТ ЭТОТ БЛОК ГЛАВНЫЙ:
-    # именно он опускает "Курск - год" вниз страницы
-    add_empty_paragraphs(doc, 7)
-
     add_paragraph(
         doc,
         f"{city} - {year}",
         align=WD_ALIGN_PARAGRAPH.CENTER,
         size=16,
+        space_before=210,
     )
 
-    # =========================
-    # 2 СТРАНИЦА
-    # =========================
-    doc.add_page_break()
+    new_section = doc.add_section(WD_SECTION_START.NEW_PAGE)
+    new_section.top_margin = Cm(3)
+    new_section.bottom_margin = Cm(2.25)
+    new_section.left_margin = Cm(2.2)
+    new_section.right_margin = Cm(2.3)
+    new_section.footer_distance = Cm(1.3)
+    clear_section_footer(new_section)
 
     add_paragraph(doc, f"УДК  {udk}", size=16, space_after=0)
     add_paragraph(doc, f"Составитель:  {compiler_name}", size=16, space_after=6)
@@ -268,6 +366,153 @@ def generate_title_page_docx(
         line_spacing=1.0,
         space_after=0,
     )
+
+    doc.save(output_path)
+    return output_path
+
+
+def generate_tutorial_title_page_docx(
+    author_name: str,
+    tutorial_title: str,
+    city: str,
+    year: int,
+    reviewers: list,
+    a_value: str,
+    isbn: str,
+    directions: list,
+    udk: str,
+    bbk: str,
+    description: str,
+) -> str:
+    output_dir = os.path.join(tempfile.gettempdir(), "title_pages")
+    os.makedirs(output_dir, exist_ok=True)
+
+    filename = f"tutorial_title_page_{uuid4().hex}.docx"
+    output_path = os.path.join(output_dir, filename)
+
+    doc = Document()
+
+    section = doc.sections[0]
+    section.top_margin = Cm(3)
+    section.bottom_margin = Cm(2.25)
+    section.left_margin = Cm(2.2)
+    section.right_margin = Cm(2.3)
+
+    normal_style = doc.styles["Normal"]
+    normal_style.font.name = "Times New Roman"
+    normal_style._element.rPr.rFonts.set(qn("w:eastAsia"), "Times New Roman")
+    normal_style.font.size = Pt(16)
+
+    title_for_biblio = format_tutorial_title(tutorial_title)
+    a_value_formatted = ensure_a_value_prefix(a_value)
+    author_name_biblio = format_author_name_for_biblio(author_name)
+
+    # 1 страница
+    add_paragraph(doc, "МИНОБРНАУКИ РОССИИ", align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+    add_paragraph(doc, "Федеральное государственное бюджетное", align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+    add_paragraph(doc, "образовательное учреждение высшего", align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+    add_paragraph(doc, "образования", align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+    add_paragraph(doc, "«Юго-Западный государственный университет»", align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+    add_paragraph(doc, "(ЮЗГУ)", align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+
+    add_empty_paragraphs(doc, 6)
+
+    add_paragraph(doc, author_name_biblio, align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+    add_empty_paragraphs(doc, 2)
+
+    add_paragraph(doc, tutorial_title.upper(), align=WD_ALIGN_PARAGRAPH.CENTER, size=16, bold=True)
+    add_empty_paragraphs(doc, 1)
+    add_paragraph(doc, "Учебное пособие", align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+    add_empty_paragraphs(doc, 6)
+
+    add_paragraph(
+        doc,
+        "Утверждено Учебно-методическим составом",
+        align=WD_ALIGN_PARAGRAPH.CENTER,
+        size=16,
+    )
+    add_paragraph(
+        doc,
+        "Юго-Западного государственного университета",
+        align=WD_ALIGN_PARAGRAPH.CENTER,
+        size=16,
+    )
+
+    # Курск 2026 внизу первой страницы не через footer, а через отступ
+    add_paragraph(
+        doc,
+        f"{city} {year}",
+        align=WD_ALIGN_PARAGRAPH.CENTER,
+        size=16,
+        space_before=140,
+    )
+
+    # 2 страница
+    new_section = doc.add_section(WD_SECTION_START.NEW_PAGE)
+    new_section.top_margin = Cm(3)
+    new_section.bottom_margin = Cm(2.25)
+    new_section.left_margin = Cm(2.2)
+    new_section.right_margin = Cm(2.3)
+    clear_section_footer(new_section)
+
+    reviewers_title = "Рецензенты:" if len(reviewers) > 1 else "Рецензент:"
+    add_paragraph(doc, reviewers_title, size=16, space_after=4)
+
+    for reviewer in reviewers:
+        text = f"{reviewer.degree_position}  {reviewer.fio}"
+        if text.strip().lower().startswith("рецензенты:"):
+            text = text.split(":", 1)[1].strip()
+        if text.strip().lower().startswith("рецензент:"):
+            text = text.split(":", 1)[1].strip()
+
+        add_paragraph(
+            doc,
+            text,
+            size=16,
+            space_after=4,
+        )
+
+    add_empty_paragraphs(doc, 1)
+
+    add_paragraph(doc, author_name_biblio, size=16)
+    add_empty_paragraphs(doc, 1)
+
+    add_paragraph(
+        doc,
+        f"{a_value_formatted}    {title_for_biblio}: учеб. пособие / {author_name_biblio};",
+        size=16,
+    )
+    add_paragraph(
+        doc,
+        f"Юго-Зап. гос. ун-т. – {city}, {year}. – ____ с. – Библиогр.: с. ___.",
+        size=16,
+    )
+    add_paragraph(doc, f"ISBN {isbn}", size=16, space_after=8)
+
+    add_paragraph(doc, description, size=16, line_spacing=1.0, space_after=8)
+
+    if len(directions) == 1:
+        directions_text = f"{directions[0].code} «{directions[0].faculty_name}»"
+    else:
+        directions_text = ", ".join(
+            [f"{item.code} «{item.faculty_name}»" for item in directions[:-1]]
+        ) + f" и {directions[-1].code} «{directions[-1].faculty_name}»"
+
+    add_paragraph(
+        doc,
+        f"Предназначено для студентов и магистрантов укрупненных групп направлений подготовки {directions_text}.",
+        size=16,
+        line_spacing=1.0,
+        space_after=8,
+    )
+
+    add_paragraph(doc, f"УДК {udk}", size=16)
+    add_paragraph(doc, f"ББК {bbk}", size=16, space_after=8)
+
+    add_paragraph(doc, f"ISBN {isbn}", size=16, space_after=8)
+
+    add_paragraph(doc, f"© Юго-Западный государственный университет, {year}", size=16)
+    add_paragraph(doc, f"© {author_name_biblio}, {year}", size=16)
 
     doc.save(output_path)
     return output_path

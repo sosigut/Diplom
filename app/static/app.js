@@ -6,12 +6,24 @@ const state = {
 
 const $ = (id) => document.getElementById(id);
 
+let toastTimer = null;
+
 function showMessage(text, type = "info") {
   const box = $("global-message");
+  if (!box) return;
+
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+  }
+
   box.textContent = text;
   box.className = `toast ${type}`;
-  box.classList.remove("hidden");
-  setTimeout(() => box.classList.add("hidden"), 3500);
+  box.style.display = "block";
+
+  toastTimer = setTimeout(() => {
+    box.style.display = "none";
+  }, 3500);
 }
 
 function updateAuthStatus() {
@@ -76,9 +88,9 @@ async function apiFetch(url, options = {}, retry = true) {
     try {
       await refreshAccessToken();
       return apiFetch(url, options, false);
-    } catch (error) {
+    } catch (e) {
       clearTokens();
-      throw error;
+      throw e;
     }
   }
 
@@ -93,40 +105,42 @@ async function parseResponse(response) {
   return response.text();
 }
 
+function estimateCheckTime(file) {
+  if (!file) return "5–15 сек";
+
+  const sizeKB = file.size / 1024;
+
+  if (sizeKB <= 300) return "5–10 сек";
+  if (sizeKB <= 1024) return "10–20 сек";
+  if (sizeKB <= 3072) return "20–40 сек";
+  return "40–90 сек";
+}
+
+function showCheckLoading(fileName, estimatedTime) {
+  const box = $("check-loading");
+  const title = $("check-loading-title");
+  const text = $("check-loading-text");
+
+  if (!box || !title || !text) return;
+
+  title.textContent = "Идёт проверка методички...";
+  text.textContent = `Файл: ${fileName}. Ориентировочное время: ${estimatedTime}`;
+  box.hidden = false;
+}
+
+function hideCheckLoading() {
+  const box = $("check-loading");
+  if (box) {
+    box.hidden = true;
+  }
+}
+
 function activateSection(sectionId) {
   document.querySelectorAll(".section").forEach((el) => el.classList.remove("active"));
   document.querySelectorAll(".nav-btn").forEach((el) => el.classList.remove("active"));
 
-  document.getElementById(sectionId)?.classList.add("active");
+  document.getElementById(sectionId).classList.add("active");
   document.querySelector(`.nav-btn[data-section="${sectionId}"]`)?.classList.add("active");
-}
-
-function initDescriptionControl() {
-  const description = $("title-description");
-  const counter = $("title-description-counter");
-
-  if (!description || !counter) {
-    return;
-  }
-
-  const maxLength = Number(description.getAttribute("maxlength")) || 1000;
-
-  const updateCounter = () => {
-    if (description.value.length > maxLength) {
-      description.value = description.value.slice(0, maxLength);
-    }
-
-    const current = description.value.length;
-    counter.textContent = `${current} / ${maxLength}`;
-    counter.classList.toggle("limit", current >= maxLength);
-  };
-
-  description.addEventListener("input", updateCounter);
-  description.addEventListener("paste", () => {
-    requestAnimationFrame(updateCounter);
-  });
-
-  updateCounter();
 }
 
 async function handleLogin(event) {
@@ -159,12 +173,20 @@ async function handleLogin(event) {
 async function handleRegister(event) {
   event.preventDefault();
 
+  let facultyCode = $("register-faculty-code").value.trim();
+
+  // Проверяем формат
+  if (!validateFacultyCode(facultyCode)) {
+    showMessage("Код факультета должен быть в формате 00.00.00 (например, 09.03.04)", "error");
+    return;
+  }
+
   const payload = {
     fio: $("register-fio").value.trim(),
     email: $("register-email").value.trim(),
     password: $("register-password").value,
-    faculty_code: Number($("register-faculty-code").value),
-    department_code: Number($("register-department-code").value),
+    faculty_code: facultyCode,
+    department_name: $("register-department-name").value.trim(),
     role: $("register-role").value,
   };
 
@@ -219,51 +241,91 @@ async function handleCheck(event) {
     return;
   }
 
+  const form = event.target;
+  const submitBtn = form.querySelector('button[type="submit"]');
   const fileInput = $("manual-file");
-  if (!fileInput.files.length) {
+
+  if (!fileInput || !fileInput.files.length) {
     showMessage("Выберите файл", "error");
     return;
   }
 
-  const formData = new FormData();
-  formData.append("file", fileInput.files[0]);
+  const file = fileInput.files[0];
+  const estimatedTime = estimateCheckTime(file);
 
-  const response = await apiFetch("/checker/check", {
-    method: "POST",
-    body: formData,
-    headers: {},
-  });
-
-  const data = await parseResponse(response);
-
-  if (!response.ok) {
-    showMessage(data.detail || "Ошибка проверки файла", "error");
-    return;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Проверяется...";
   }
 
-  const reportBtn = data.pdf_report_url
-    ? `<a class="link-btn report" href="${data.pdf_report_url}" target="_blank">Открыть PDF-отчёт</a>`
-    : "";
+  fileInput.disabled = true;
 
+  showCheckLoading(file.name, estimatedTime);
   $("check-result").innerHTML = `
     <div class="stat-card">
-      <h3>Результат проверки</h3>
-      <p><strong>Статус:</strong> ${data.has_errors ? "Найдены замечания" : "Ошибок не найдено"}</p>
-      <p><strong>Ошибки:</strong> ${data.errors_count}</p>
-      <p><strong>Предупреждения:</strong> ${data.warnings_count}</p>
-      <div class="actions-row">
-        <a class="link-btn" href="${data.checked_file_url}" target="_blank">Скачать проверенный файл</a>
-        ${reportBtn}
-      </div>
+      <h3>Проверка запущена</h3>
+      <p>Идёт анализ документа. Пожалуйста, подождите.</p>
     </div>
   `;
 
-  if (data.pdf_report_url) {
-    window.open(data.pdf_report_url, "_blank");
-  }
+  const formData = new FormData();
+  formData.append("file", file);
 
-  await loadManuals();
-  showMessage("Проверка завершена", "success");
+  try {
+    const response = await apiFetch("/checker/check", {
+      method: "POST",
+      body: formData,
+      headers: {},
+    });
+
+    const rawData = await parseResponse(response);
+    const data = typeof rawData === "object" && rawData !== null ? rawData : {};
+
+    if (!response.ok) {
+      showMessage(data.detail || data.text || "Ошибка проверки файла", "error");
+      return;
+    }
+
+    const reportBtn = data.pdf_report_url
+      ? `<a class="link-btn report" href="${data.pdf_report_url}" target="_blank">Открыть PDF-отчёт</a>`
+      : "";
+
+    $("check-result").innerHTML = `
+      <div class="stat-card">
+        <h3>Результат проверки</h3>
+        <p><strong>Статус:</strong> ${data.has_errors ? "Найдены замечания" : "Ошибок не найдено"}</p>
+        <p><strong>Ошибки:</strong> ${data.errors_count ?? 0}</p>
+        <div class="actions-row">
+          <a class="link-btn" href="${data.checked_file_url}" target="_blank">Скачать проверенный файл</a>
+          ${reportBtn}
+        </div>
+      </div>
+    `;
+
+    if (data.pdf_report_url) {
+      window.open(data.pdf_report_url, "_blank");
+    }
+
+    await loadManuals();
+    showMessage(data.message || "Проверка завершена", "success");
+  } catch (error) {
+    $("check-result").innerHTML = `
+      <div class="stat-card">
+        <h3>Ошибка проверки</h3>
+        <p>Во время обработки файла произошла ошибка.</p>
+      </div>
+    `;
+    showMessage("Произошла ошибка во время проверки", "error");
+  } finally {
+    hideCheckLoading();
+
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Проверить методичку";
+    }
+
+    fileInput.disabled = false;
+  }
 }
 
 async function loadManuals() {
@@ -285,7 +347,7 @@ async function loadManuals() {
     return;
   }
 
-  $("manuals-list").innerHTML = data.map((item) => `
+  $("manuals-list").innerHTML = data.map(item => `
     <div class="manual-item">
       <div>
         <div><strong>${item.manual_name || item.file_name || "Методичка"}</strong></div>
@@ -296,7 +358,7 @@ async function loadManuals() {
       </div>
       <div class="manual-meta">
         Факультет: ${item.faculty_code ?? "-"}<br>
-        Кафедра: ${item.department_code ?? "-"}
+        Кафедра: ${item.department_name ?? "-"}
       </div>
     </div>
   `).join("");
@@ -305,11 +367,20 @@ async function loadManuals() {
 async function handleFacultyStat(event) {
   event.preventDefault();
 
-  const code = $("stat-faculty-code").value;
+  let code = $("stat-faculty-code").value.trim();
+
+  // Проверяем формат
+  if (!validateFacultyCode(code)) {
+    showMessage("Код факультета должен быть в формате 00.00.00 (например, 09.03.04)", "error");
+    return;
+  }
+
   const from = $("stat-faculty-from").value;
   const to = $("stat-faculty-to").value;
 
-  const response = await apiFetch(`/statistics/faculty?faculty_code=${code}&date_from=${from}&date_to=${to}`);
+  const response = await apiFetch(
+    `/statistics/faculty?faculty_code=${encodeURIComponent(code)}&date_from=${from}&date_to=${to}`
+  );
   const data = await parseResponse(response);
 
   if (!response.ok) {
@@ -330,11 +401,13 @@ async function handleFacultyStat(event) {
 async function handleDepartmentStat(event) {
   event.preventDefault();
 
-  const code = $("stat-department-code").value;
+  const departmentName = $("stat-department-name").value.trim();
   const from = $("stat-department-from").value;
   const to = $("stat-department-to").value;
 
-  const response = await apiFetch(`/statistics/department?department_code=${code}&date_from=${from}&date_to=${to}`);
+  const response = await apiFetch(
+    `/statistics/department?department_name=${encodeURIComponent(departmentName)}&date_from=${from}&date_to=${to}`
+  );
   const data = await parseResponse(response);
 
   if (!response.ok) {
@@ -354,7 +427,6 @@ async function handleDepartmentStat(event) {
 
 async function handleUserStat(event) {
   event.preventDefault();
-
   const fio = encodeURIComponent($("stat-user-fio").value.trim());
   const from = $("stat-user-from").value;
   const to = $("stat-user-to").value;
@@ -380,9 +452,17 @@ async function handleUserStat(event) {
 async function handleCreateFaculty(event) {
   event.preventDefault();
 
+  let facultyCode = $("faculty-code").value.trim();
+
+  // Проверяем формат
+  if (!validateFacultyCode(facultyCode)) {
+    showMessage("Код факультета должен быть в формате 00.00.00 (например, 09.03.04)", "error");
+    return;
+  }
+
   const payload = {
     faculty_name: $("faculty-name").value.trim(),
-    faculty_code: Number($("faculty-code").value),
+    faculty_code: facultyCode,
     dean_fio: $("dean-fio").value.trim(),
   };
 
@@ -405,10 +485,17 @@ async function handleCreateFaculty(event) {
 async function handleCreateDepartment(event) {
   event.preventDefault();
 
+  let facultyCode = $("department-faculty-code").value.trim();
+
+  // Проверяем формат
+  if (!validateFacultyCode(facultyCode)) {
+    showMessage("Код факультета должен быть в формате 00.00.00 (например, 09.03.04)", "error");
+    return;
+  }
+
   const payload = {
     department_name: $("department-name").value.trim(),
-    department_code: Number($("department-code").value),
-    faculty_code: Number($("department-faculty-code").value),
+    faculty_code: facultyCode,
   };
 
   const response = await apiFetch("/admin/department", {
@@ -427,6 +514,188 @@ async function handleCreateDepartment(event) {
   event.target.reset();
 }
 
+function setRequiredForBlock(block, isRequired) {
+  if (!block) return;
+
+  const fields = block.querySelectorAll("input, select, textarea");
+  fields.forEach((field) => {
+    if (isRequired) {
+      if (field.dataset.wasRequired === "true") {
+        field.required = true;
+      }
+    } else {
+      if (field.required) {
+        field.dataset.wasRequired = "true";
+      }
+      field.required = false;
+    }
+  });
+}
+
+function toggleTitleForms() {
+  const type = $("title-doc-type")?.value;
+  const manualBlock = $("manual-title-block");
+  const tutorialBlock = $("tutorial-title-block");
+
+  const isManual = type === "manual";
+  const isTutorial = type === "tutorial";
+
+  if (manualBlock) manualBlock.style.display = isManual ? "block" : "none";
+  if (tutorialBlock) tutorialBlock.style.display = isTutorial ? "block" : "none";
+
+  setRequiredForBlock(manualBlock, isManual);
+  setRequiredForBlock(tutorialBlock, isTutorial);
+}
+
+function bindTextareaCounter(textareaId, counterId, maxLength) {
+  const textarea = $(textareaId);
+  const counter = $(counterId);
+
+  if (!textarea || !counter) return;
+
+  const updateCounter = () => {
+    const length = textarea.value.length;
+    counter.textContent = `${length} / ${maxLength}`;
+  };
+
+  textarea.addEventListener("input", updateCounter);
+  updateCounter();
+}
+
+function initTextareaCounters() {
+  bindTextareaCounter("title-description", "title-description-counter", 1000);
+  bindTextareaCounter("tutorial-description", "tutorial-description-counter", 500);
+}
+
+function addTutorialReviewer() {
+  const container = $("tutorial-reviewers-container");
+  if (!container) return;
+
+  const block = document.createElement("div");
+  block.className = "tutorial-reviewer-item";
+  block.innerHTML = `
+    <label>Ученая степень, должность рецензента</label>
+    <input type="text" class="tutorial-reviewer-degree" />
+
+    <label>ФИО рецензента</label>
+    <input type="text" class="tutorial-reviewer-fio" />
+  `;
+  container.appendChild(block);
+}
+
+function addTutorialDirection() {
+  const container = $("tutorial-directions-container");
+  if (!container) return;
+
+  const block = document.createElement("div");
+  block.className = "tutorial-direction-item";
+  block.innerHTML = `
+    <label>Код направления</label>
+    <input type="text" class="tutorial-direction-code" />
+
+    <label>Название факультета / группы</label>
+    <input type="text" class="tutorial-direction-name" />
+  `;
+  container.appendChild(block);
+}
+
+async function handleTutorialTitlePageGenerate() {
+  const reviewers = [...document.querySelectorAll(".tutorial-reviewer-item")]
+    .map(item => ({
+      degree_position: item.querySelector(".tutorial-reviewer-degree")?.value.trim(),
+      fio: item.querySelector(".tutorial-reviewer-fio")?.value.trim(),
+    }))
+    .filter(item => item.degree_position && item.fio);
+
+  const directions = [...document.querySelectorAll(".tutorial-direction-item")]
+    .map(item => ({
+      code: item.querySelector(".tutorial-direction-code")?.value.trim(),
+      faculty_name: item.querySelector(".tutorial-direction-name")?.value.trim(),
+    }))
+    .filter(item => item.code && item.faculty_name);
+
+  const payload = {
+    author_name: $("tutorial-author-name")?.value.trim(),
+    tutorial_title: $("tutorial-title")?.value.trim(),
+    city: $("tutorial-city")?.value.trim(),
+    year: Number($("tutorial-year")?.value),
+    reviewers,
+    a_value: $("tutorial-a-value")?.value.trim(),
+    isbn: $("tutorial-isbn")?.value.trim(),
+    directions,
+    udk: $("tutorial-udk")?.value.trim(),
+    bbk: $("tutorial-bbk")?.value.trim(),
+    description: $("tutorial-description")?.value.trim(),
+  };
+
+  if (
+    !payload.author_name ||
+    !payload.tutorial_title ||
+    !payload.city ||
+    !payload.year ||
+    !payload.a_value ||
+    !payload.isbn ||
+    !payload.udk ||
+    !payload.bbk ||
+    !payload.description ||
+    !payload.reviewers.length ||
+    !payload.directions.length
+  ) {
+    showMessage("Заполните все поля учебного пособия", "error");
+    return;
+  }
+
+  if (payload.description.length > 500) {
+    showMessage("Описание учебного пособия не должно превышать 500 символов", "error");
+    return;
+  }
+
+  const response = await apiFetch("/title-page/generate-tutorial", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const data = await parseResponse(response);
+
+    if (Array.isArray(data.detail)) {
+      const text = data.detail
+        .map(err => `${err.loc.join(" → ")}: ${err.msg}`)
+        .join("; ");
+      showMessage(text, "error");
+    } else {
+      showMessage(data.detail || "Ошибка генерации учебного пособия", "error");
+    }
+    return;
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+
+  let fileName = "tutorial_title_page.docx";
+  const disposition = response.headers.get("content-disposition");
+  if (disposition) {
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    if (match && match[1]) fileName = match[1];
+  }
+
+  $("title-page-result").innerHTML = `
+    <div class="stat-card">
+      <h3>Титульный лист учебного пособия создан</h3>
+      <div class="actions-row">
+        <a class="link-btn" href="${url}" download="${fileName}">Скачать файл</a>
+      </div>
+    </div>
+  `;
+
+  showMessage("Учебное пособие сгенерировано", "success");
+}
+
+function validateFacultyCode(code) {
+  const regex = /^\d{2}\.\d{2}\.\d{2}$/;
+  return regex.test(code);
+}
+
 async function handleTitlePageGenerate(event) {
   event.preventDefault();
 
@@ -436,7 +705,12 @@ async function handleTitlePageGenerate(event) {
     return;
   }
 
-  const descriptionValue = $("title-description")?.value.trim() || "";
+  const docType = $("title-doc-type")?.value;
+
+  if (docType === "tutorial") {
+    await handleTutorialTitlePageGenerate();
+    return;
+  }
 
   const payload = {
     manual_title: $("title-manual-title")?.value.trim(),
@@ -450,7 +724,7 @@ async function handleTitlePageGenerate(event) {
     compiler_name: $("title-compiler")?.value.trim(),
     reviewer_name: $("title-reviewer")?.value.trim(),
     reviewer_degree: $("title-reviewer-degree")?.value.trim(),
-    description: descriptionValue,
+    description: $("title-description")?.value.trim(),
   };
 
   if (
@@ -486,11 +760,11 @@ async function handleTitlePageGenerate(event) {
 
     if (Array.isArray(data.detail)) {
       const text = data.detail
-        .map((err) => `${err.loc.join(" → ")}: ${err.msg}`)
+        .map(err => `${err.loc.join(" → ")}: ${err.msg}`)
         .join("; ");
       showMessage(text, "error");
     } else {
-      showMessage(data.detail || "Ошибка генерации", "error");
+      showMessage(data.detail || "Не удалось сгенерировать титульный лист", "error");
     }
     return;
   }
@@ -500,7 +774,6 @@ async function handleTitlePageGenerate(event) {
 
   let fileName = "title_page.docx";
   const disposition = response.headers.get("content-disposition");
-
   if (disposition) {
     const match = disposition.match(/filename="?([^"]+)"?/);
     if (match && match[1]) {
@@ -510,16 +783,15 @@ async function handleTitlePageGenerate(event) {
 
   $("title-page-result").innerHTML = `
     <div class="stat-card">
-      <h3>Титульный лист создан</h3>
+      <h3>Титульный лист успешно создан</h3>
+      <p>Файл готов к скачиванию.</p>
       <div class="actions-row">
-        <a class="link-btn" href="${url}" download="${fileName}">
-          Скачать файл
-        </a>
+        <a class="link-btn" href="${url}" download="${fileName}">Скачать титульный лист</a>
       </div>
     </div>
   `;
 
-  showMessage("Готово", "success");
+  showMessage("Титульный лист сгенерирован", "success");
 }
 
 async function logout() {
@@ -560,17 +832,33 @@ function initEvents() {
   $("logout-btn")?.addEventListener("click", logout);
   $("load-profile-btn")?.addEventListener("click", loadProfile);
   $("load-manuals-btn")?.addEventListener("click", loadManuals);
+
+  $("title-doc-type")?.addEventListener("change", toggleTitleForms);
+  $("add-reviewer-btn")?.addEventListener("click", addTutorialReviewer);
+  $("add-direction-btn")?.addEventListener("click", addTutorialDirection);
 }
 
 async function bootstrap() {
   updateAuthStatus();
   initNavigation();
   initEvents();
-  initDescriptionControl();
+  toggleTitleForms();
+  initTextareaCounters();
+  hideCheckLoading();
+
+  const messageBox = $("global-message");
+  if (messageBox) {
+    messageBox.style.display = "none";
+  }
 
   const yearInput = $("title-year");
   if (yearInput && !yearInput.value) {
     yearInput.value = new Date().getFullYear();
+  }
+
+  const tutorialYearInput = $("tutorial-year");
+  if (tutorialYearInput && !tutorialYearInput.value) {
+    tutorialYearInput.value = new Date().getFullYear();
   }
 
   if (state.accessToken) {

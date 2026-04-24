@@ -430,10 +430,6 @@ textarea:focus {
   background: var(--primary);
 }
 
-.hidden {
-  display: none;
-}
-
 .actions-row {
   display: flex;
   gap: 10px;
@@ -509,4 +505,55 @@ textarea:focus {
     min-height: 140px;
     max-height: 140px;
   }
+}
+
+.loading-box {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: #f8fbff;
+}
+
+.loader {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #dbeafe;
+  border-top: 3px solid #2563eb;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.loading-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.loading-text {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.primary-btn:disabled,
+.secondary-btn:disabled,
+.danger-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+[hidden] {
+  display: none !important;
 }
