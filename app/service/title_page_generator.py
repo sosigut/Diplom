@@ -516,3 +516,98 @@ def generate_tutorial_title_page_docx(
 
     doc.save(output_path)
     return output_path
+
+
+def generate_monograph_title_page_docx(
+        authors: list,
+        monograph_title: str,
+        city: str,
+        year: int,
+        udk: str,
+        bbk: str,
+        isbn: str,
+        description: str,
+) -> str:
+    """
+    Генерация титульного листа монографии
+    """
+    output_dir = os.path.join(tempfile.gettempdir(), "title_pages")
+    os.makedirs(output_dir, exist_ok=True)
+
+    filename = f"monograph_title_page_{uuid4().hex}.docx"
+    output_path = os.path.join(output_dir, filename)
+
+    doc = Document()
+
+    section = doc.sections[0]
+    section.top_margin = Cm(3)
+    section.bottom_margin = Cm(2.25)
+    section.left_margin = Cm(2.2)
+    section.right_margin = Cm(2.3)
+
+    normal_style = doc.styles["Normal"]
+    normal_style.font.name = "Times New Roman"
+    normal_style._element.rPr.rFonts.set(qn("w:eastAsia"), "Times New Roman")
+    normal_style.font.size = Pt(16)
+
+    authors_fio = [author.fio if hasattr(author, 'fio') else author for author in authors]
+
+    if len(authors_fio) == 1:
+        authors_biblio = authors_fio[0]
+    else:
+        authors_biblio = f"{', '.join(authors_fio[:-1])} и {authors_fio[-1]}"
+
+    # ========== 1 СТРАНИЦА ==========
+    add_paragraph(doc, "МИНИСТЕРСТВО ОБРАЗОВАНИЯ РФ", align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+    add_paragraph(doc, "Государственное образовательное учреждение высшего профессионального образования",
+                  align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+    add_paragraph(doc, "«Юго-Западный государственный университет»", align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+
+    add_empty_paragraphs(doc, 4)
+
+    for author in authors_fio:
+        add_paragraph(doc, author, align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+
+    add_empty_paragraphs(doc, 2)
+
+    add_paragraph(doc, monograph_title.upper(), align=WD_ALIGN_PARAGRAPH.CENTER, size=16, bold=True)
+
+    add_empty_paragraphs(doc, 1)
+
+    add_paragraph(doc, "Монография", align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+
+    add_empty_paragraphs(doc, 6)
+
+    add_paragraph(doc, f"{city} -- {year}", align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+
+    # ========== 2 СТРАНИЦА ==========
+    new_section = doc.add_section(WD_SECTION_START.NEW_PAGE)
+    new_section.top_margin = Cm(3)
+    new_section.bottom_margin = Cm(2.25)
+    new_section.left_margin = Cm(2.2)
+    new_section.right_margin = Cm(2.3)
+    clear_section_footer(new_section)
+
+    add_paragraph(doc, f"УДК {udk}", size=16, space_after=0)
+    add_paragraph(doc, f"ББК {bbk}", size=16, space_after=12)
+
+    add_paragraph(doc, "Рецензенты:", size=16, space_after=6)
+
+    add_empty_paragraphs(doc, 1)
+
+    biblio_text = f"{authors_biblio}. {monograph_title}: монография / {authors_biblio}; Юго-Западный гос. ун-т. – {city}, {year}. – ____ с. : ил. ____, табл. ____, Библиогр.: с. _____"
+    add_paragraph(doc, biblio_text, size=16, line_spacing=1.0, space_after=6)
+
+    add_paragraph(doc, f"ISBN {isbn}", size=16, space_after=12)
+
+    add_paragraph(doc, description, size=16, line_spacing=1.0, space_after=12)
+
+    add_paragraph(doc, f"УДК {udk}", size=16, space_after=0)
+    add_paragraph(doc, f"ББК {bbk}", size=16, space_after=12)
+
+    add_paragraph(doc, f"ISBN {isbn}", size=16, space_after=6)
+    add_paragraph(doc, f"© Юго-Западный государственный университет, {year}", size=16, space_after=0)
+    add_paragraph(doc, f"© {authors_biblio}, {year}", size=16)
+
+    doc.save(output_path)
+    return output_path

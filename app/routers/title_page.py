@@ -7,10 +7,11 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.department import Department
 from app.models.user import User
-from app.schemas.title_page import TitlePageRequest, TutorialTitlePageRequest
+from app.schemas.title_page import TitlePageRequest, TutorialTitlePageRequest, MonographTitlePageRequest
 from app.service.title_page_generator import (
     generate_title_page_docx,
     generate_tutorial_title_page_docx,
+    generate_monograph_title_page_docx,
 )
 from app.utils.dependencies import get_current_user
 
@@ -69,6 +70,31 @@ def generate_tutorial_title_page(
         directions=data.directions,
         udk=data.udk,
         bbk=data.bbk,
+        description=data.description,
+    )
+
+    return FileResponse(
+        path=file_path,
+        filename=os.path.basename(file_path),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+
+@router.post("/generate-monograph")
+def generate_monograph_title_page(
+    data: MonographTitlePageRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Генерация титульного листа монографии
+    """
+    file_path = generate_monograph_title_page_docx(
+        authors=data.authors,
+        monograph_title=data.monograph_title,
+        city=data.city,
+        year=data.year,
+        udk=data.udk,
+        bbk=data.bbk,
+        isbn=data.isbn,
         description=data.description,
     )
 

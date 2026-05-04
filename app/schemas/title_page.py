@@ -44,3 +44,21 @@ class TutorialTitlePageRequest(BaseModel):
     udk: str = Field(..., description="Значение УДК")
     bbk: str = Field(..., description="Значение ББК")
     description: str = Field(..., max_length=500, description="Краткое описание учебного пособия")
+
+
+class MonographAuthor(BaseModel):
+    fio: str = Field(..., description="ФИО автора")
+
+
+class MonographTitlePageRequest(BaseModel):
+    # 1 страница
+    authors: List[MonographAuthor] = Field(..., min_length=1, description="Список авторов")
+    monograph_title: str = Field(..., description="Тема монографии")
+    city: str = Field(default="Курск")
+    year: int = Field(...)
+
+    # 2 страница
+    udk: str = Field(..., description="Значение УДК")
+    bbk: str = Field(..., description="Значение ББК")
+    isbn: str = Field(..., description="Значение ISBN")
+    description: str = Field(..., max_length=1000, description="Краткое описание монографии")

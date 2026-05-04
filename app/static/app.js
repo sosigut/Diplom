@@ -123,7 +123,7 @@ function showCheckLoading(fileName, estimatedTime) {
 
   if (!box || !title || !text) return;
 
-  title.textContent = "Идёт проверка методички...";
+  title.textContent = "Идёт проверка файла...";
   text.textContent = `Файл: ${fileName}. Ориентировочное время: ${estimatedTime}`;
   box.hidden = false;
 }
@@ -139,8 +139,20 @@ function activateSection(sectionId) {
   document.querySelectorAll(".section").forEach((el) => el.classList.remove("active"));
   document.querySelectorAll(".nav-btn").forEach((el) => el.classList.remove("active"));
 
-  document.getElementById(sectionId).classList.add("active");
-  document.querySelector(`.nav-btn[data-section="${sectionId}"]`)?.classList.add("active");
+  const targetSection = document.getElementById(sectionId);
+  if (targetSection) targetSection.classList.add("active");
+
+  const targetBtn = document.querySelector(`.nav-btn[data-section="${sectionId}"]`);
+  if (targetBtn) targetBtn.classList.add("active");
+
+  // Специальная обработка для РИО секции
+  if (sectionId === "rio-section") {
+    setTimeout(() => {
+      if (typeof loadRioUserInfo === "function") loadRioUserInfo();
+      if (typeof resetRioSession === "function") resetRioSession();
+      if (typeof resetAndGoToStep1 === "function") resetAndGoToStep1();
+    }, 100);
+  }
 }
 
 async function handleLogin(event) {
@@ -175,7 +187,6 @@ async function handleRegister(event) {
 
   let facultyCode = $("register-faculty-code").value.trim();
 
-  // Проверяем формат
   if (!validateFacultyCode(facultyCode)) {
     showMessage("Код факультета должен быть в формате 00.00.00 (например, 09.03.04)", "error");
     return;
@@ -369,7 +380,6 @@ async function handleFacultyStat(event) {
 
   let code = $("stat-faculty-code").value.trim();
 
-  // Проверяем формат
   if (!validateFacultyCode(code)) {
     showMessage("Код факультета должен быть в формате 00.00.00 (например, 09.03.04)", "error");
     return;
@@ -454,7 +464,6 @@ async function handleCreateFaculty(event) {
 
   let facultyCode = $("faculty-code").value.trim();
 
-  // Проверяем формат
   if (!validateFacultyCode(facultyCode)) {
     showMessage("Код факультета должен быть в формате 00.00.00 (например, 09.03.04)", "error");
     return;
@@ -487,7 +496,6 @@ async function handleCreateDepartment(event) {
 
   let facultyCode = $("department-faculty-code").value.trim();
 
-  // Проверяем формат
   if (!validateFacultyCode(facultyCode)) {
     showMessage("Код факультета должен быть в формате 00.00.00 (например, 09.03.04)", "error");
     return;
@@ -536,15 +544,19 @@ function toggleTitleForms() {
   const type = $("title-doc-type")?.value;
   const manualBlock = $("manual-title-block");
   const tutorialBlock = $("tutorial-title-block");
+  const monographBlock = $("monograph-title-block");
 
   const isManual = type === "manual";
   const isTutorial = type === "tutorial";
+  const isMonograph = type === "monograph";
 
   if (manualBlock) manualBlock.style.display = isManual ? "block" : "none";
   if (tutorialBlock) tutorialBlock.style.display = isTutorial ? "block" : "none";
+  if (monographBlock) monographBlock.style.display = isMonograph ? "block" : "none";
 
   setRequiredForBlock(manualBlock, isManual);
   setRequiredForBlock(tutorialBlock, isTutorial);
+  setRequiredForBlock(monographBlock, isMonograph);
 }
 
 function bindTextareaCounter(textareaId, counterId, maxLength) {
@@ -565,6 +577,7 @@ function bindTextareaCounter(textareaId, counterId, maxLength) {
 function initTextareaCounters() {
   bindTextareaCounter("title-description", "title-description-counter", 1000);
   bindTextareaCounter("tutorial-description", "tutorial-description-counter", 500);
+  bindTextareaCounter("monograph-description", "monograph-description-counter", 1000);
 }
 
 function addTutorialReviewer() {
@@ -595,6 +608,20 @@ function addTutorialDirection() {
 
     <label>Название факультета / группы</label>
     <input type="text" class="tutorial-direction-name" />
+  `;
+  container.appendChild(block);
+}
+
+function addMonographAuthor() {
+  const container = document.getElementById("monograph-authors-container");
+  if (!container) return;
+
+  const block = document.createElement("div");
+  block.className = "monograph-author-item";
+  block.innerHTML = `
+    <label>ФИО автора</label>
+    <input type="text" class="monograph-author-fio" />
+    <button type="button" class="remove-author-btn secondary-btn" style="margin-top: 5px; margin-bottom: 10px;" onclick="this.parentElement.remove()">Удалить</button>
   `;
   container.appendChild(block);
 }
@@ -691,6 +718,70 @@ async function handleTutorialTitlePageGenerate() {
   showMessage("Учебное пособие сгенерировано", "success");
 }
 
+async function handleMonographTitlePageGenerate() {
+  const authors = [...document.querySelectorAll(".monograph-author-item")]
+    .map(item => ({
+      fio: item.querySelector(".monograph-author-fio")?.value.trim(),
+    }))
+    .filter(item => item.fio);
+
+  const payload = {
+    authors: authors,
+    monograph_title: document.getElementById("monograph-title")?.value.trim(),
+    city: document.getElementById("monograph-city")?.value.trim(),
+    year: Number(document.getElementById("monograph-year")?.value),
+    udk: document.getElementById("monograph-udk")?.value.trim(),
+    bbk: document.getElementById("monograph-bbk")?.value.trim(),
+    isbn: document.getElementById("monograph-isbn")?.value.trim(),
+    description: document.getElementById("monograph-description")?.value.trim(),
+  };
+
+  // Валидация
+  if (!payload.monograph_title || !payload.city || !payload.year ||
+      !payload.udk || !payload.bbk || !payload.isbn || !payload.description ||
+      payload.authors.length === 0) {
+    showMessage("Заполните все поля монографии и добавьте хотя бы одного автора", "error");
+    return;
+  }
+
+  if (payload.description.length > 1000) {
+    showMessage("Описание монографии не должно превышать 1000 символов", "error");
+    return;
+  }
+
+  const response = await apiFetch("/title-page/generate-monograph", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const data = await parseResponse(response);
+    showMessage(data.detail || "Ошибка генерации монографии", "error");
+    return;
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+
+  let fileName = "monograph_title_page.docx";
+  const disposition = response.headers.get("content-disposition");
+  if (disposition) {
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    if (match && match[1]) fileName = match[1];
+  }
+
+  document.getElementById("title-page-result").innerHTML = `
+    <div class="stat-card">
+      <h3>Титульный лист монографии создан</h3>
+      <div class="actions-row">
+        <a class="link-btn" href="${url}" download="${fileName}">Скачать файл</a>
+      </div>
+    </div>
+  `;
+
+  showMessage("Монография сгенерирована", "success");
+}
+
 function validateFacultyCode(code) {
   const regex = /^\d{2}\.\d{2}\.\d{2}$/;
   return regex.test(code);
@@ -709,6 +800,11 @@ async function handleTitlePageGenerate(event) {
 
   if (docType === "tutorial") {
     await handleTutorialTitlePageGenerate();
+    return;
+  }
+
+  if (docType === "monograph") {
+    await handleMonographTitlePageGenerate();
     return;
   }
 
@@ -836,8 +932,455 @@ function initEvents() {
   $("title-doc-type")?.addEventListener("change", toggleTitleForms);
   $("add-reviewer-btn")?.addEventListener("click", addTutorialReviewer);
   $("add-direction-btn")?.addEventListener("click", addTutorialDirection);
+  $("add-monograph-author-btn")?.addEventListener("click", addMonographAuthor);
 }
 
+// ========== РИО ОТПРАВКА ==========
+let rioCurrentStep = 1;
+let rioStep1Files = [];
+let rioStep2File = null;
+
+async function resetRioSession() {
+    if (!state.accessToken) return;
+
+    try {
+        await apiFetch("/rio/reset", { method: "POST" });
+    } catch (e) {
+        console.log("Сброс сессии не требуется");
+    }
+}
+
+async function handleRioStep1(event) {
+    event.preventDefault();
+
+    if (!state.accessToken) {
+        showMessage("Сначала войдите в систему", "error");
+        activateSection("auth-section");
+        return;
+    }
+
+    const fileInput1 = document.getElementById("rio-file-1");
+    const fileInput2 = document.getElementById("rio-file-2");
+
+    if (!fileInput1 || !fileInput2 || !fileInput1.files.length || !fileInput2.files.length) {
+        showMessage("Пожалуйста, прикрепите оба файла", "error");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("files", fileInput1.files[0]);
+    formData.append("files", fileInput2.files[0]);
+
+    const btn = event.target.querySelector('button[type="submit"]');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Загрузка...";
+    }
+
+    try {
+        const response = await apiFetch("/rio/upload-step1", {
+            method: "POST",
+            body: formData,
+            headers: {}
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            showMessage(data.detail || "Ошибка загрузки", "error");
+            return;
+        }
+
+        rioStep1Files = data.files;
+        showMessage(data.message, "success");
+        goToRioStep(2);
+
+    } catch (error) {
+        showMessage("Ошибка загрузки файлов", "error");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Загрузить файлы и продолжить →";
+        }
+    }
+}
+
+async function handleRioStep2(event) {
+    event.preventDefault();
+
+    if (!state.accessToken) {
+        showMessage("Сначала войдите в систему", "error");
+        return;
+    }
+
+    const fileInput = document.getElementById("rio-file-check");
+
+    if (!fileInput || !fileInput.files.length) {
+        showMessage("Пожалуйста, прикрепите файл для проверки", "error");
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const ext = file.name.split('.').pop().toLowerCase();
+
+    if (ext !== 'doc' && ext !== 'docx') {
+        showMessage("Поддерживаются только файлы .doc и .docx", "error");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const btn = event.target.querySelector('button[type="submit"]');
+    const loadingDiv = document.getElementById("rio-step2-loading");
+    const progressSpan = document.getElementById("rio-check-progress");
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Проверка...";
+    }
+    if (loadingDiv) loadingDiv.hidden = false;
+
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress = Math.min(progress + 10, 90);
+        if (progressSpan) progressSpan.textContent = `${progress}%`;
+    }, 500);
+
+    try {
+        const response = await apiFetch("/rio/upload-step2", {
+            method: "POST",
+            body: formData,
+            headers: {}
+        });
+
+        const data = await response.json();
+
+        clearInterval(progressInterval);
+
+        if (!response.ok) {
+            if (response.status === 422) {
+                showMessage(data.message || "Файл содержит ошибки", "error");
+            } else {
+                showMessage(data.detail || "Ошибка проверки", "error");
+            }
+            return;
+        }
+
+        if (!data.success) {
+            showMessage(data.message, "error");
+            return;
+        }
+
+        rioStep2File = data.filename;
+        showMessage(data.message, "success");
+        goToRioStep(3);
+
+    } catch (error) {
+        clearInterval(progressInterval);
+        showMessage("Ошибка при проверке файла", "error");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Проверить файл и продолжить →";
+        }
+        if (loadingDiv) loadingDiv.hidden = true;
+    }
+}
+
+async function handleRioStep3(event) {
+    event.preventDefault();
+
+    if (!state.accessToken) {
+        showMessage("Сначала войдите в систему", "error");
+        return;
+    }
+
+    const comment = document.getElementById("rio-comment")?.value || "";
+
+    if (comment.length > 1000) {
+        showMessage("Комментарий не должен превышать 1000 символов", "error");
+        return;
+    }
+
+    const btn = event.target.querySelector('button[type="submit"]');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Отправка...";
+    }
+
+    try {
+        const response = await apiFetch("/rio/submit-step3", {
+            method: "POST",
+            body: JSON.stringify({ comment }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            showMessage(data.detail || "Ошибка отправки", "error");
+            return;
+        }
+
+        showMessage(data.message, "success");
+
+        const resultDiv = document.getElementById("rio-step3-result");
+        if (resultDiv) {
+            resultDiv.innerHTML = `
+                <div class="stat-card" style="background: #f0fdf4; border-color: #86efac; margin-top: 20px;">
+                    <h3 style="color: #166534;">✅ Отправлено успешно!</h3>
+                    <p>Ваши файлы отправлены в РИО. Ожидайте ответа на указанный email.</p>
+                    <button type="button" class="primary-btn" onclick="resetAndGoToStep1()">
+                        Отправить новые файлы
+                    </button>
+                </div>
+            `;
+        }
+
+    } catch (error) {
+        showMessage("Ошибка при отправке", "error");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Отправить в РИО ✉";
+        }
+    }
+}
+
+function goToRioStep(step) {
+    rioCurrentStep = step;
+
+    for (let i = 1; i <= 3; i++) {
+        const stepDiv = document.getElementById(`rio-step-${i}`);
+        if (stepDiv) stepDiv.style.display = "none";
+    }
+
+    const currentStepDiv = document.getElementById(`rio-step-${step}`);
+    if (currentStepDiv) currentStepDiv.style.display = "block";
+
+    for (let i = 1; i <= 3; i++) {
+        const stepIndicator = document.getElementById(`rio-step-${i}-indicator`);
+        if (stepIndicator) {
+            if (i < step) {
+                stepIndicator.className = "step-indicator completed";
+            } else if (i === step) {
+                stepIndicator.className = "step-indicator active";
+            } else {
+                stepIndicator.className = "step-indicator";
+            }
+        }
+    }
+}
+
+function goToPreviousStep() {
+    if (rioCurrentStep > 1) {
+        goToRioStep(rioCurrentStep - 1);
+    }
+}
+
+async function resetAndGoToStep1() {
+    await resetRioSession();
+    rioStep1Files = [];
+    rioStep2File = null;
+
+    const file1 = document.getElementById("rio-file-1");
+    const file2 = document.getElementById("rio-file-2");
+    const fileCheck = document.getElementById("rio-file-check");
+    const comment = document.getElementById("rio-comment");
+    const resultDiv = document.getElementById("rio-step3-result");
+
+    if (file1) file1.value = "";
+    if (file2) file2.value = "";
+    if (fileCheck) fileCheck.value = "";
+    if (comment) comment.value = "";
+    if (resultDiv) resultDiv.innerHTML = "";
+
+    goToRioStep(1);
+}
+
+function loadRioUserInfo() {
+    if (state.profile) {
+        const fioSpan = document.getElementById("rio-user-fio");
+        const emailSpan = document.getElementById("rio-user-email");
+        if (fioSpan) fioSpan.textContent = state.profile.fio;
+        if (emailSpan) emailSpan.textContent = state.profile.email;
+    }
+}
+
+function initRioEvents() {
+    const form1 = document.getElementById("rio-form-step1");
+    const form2 = document.getElementById("rio-form-step2");
+    const form3 = document.getElementById("rio-form-step3");
+    const backBtn = document.getElementById("rio-back-btn");
+
+    if (form1) form1.addEventListener("submit", handleRioStep1);
+    if (form2) form2.addEventListener("submit", handleRioStep2);
+    if (form3) form3.addEventListener("submit", handleRioStep3);
+    if (backBtn) backBtn.addEventListener("click", goToPreviousStep);
+
+    // Счетчик комментария
+    bindTextareaCounter("rio-comment", "rio-comment-counter", 1000);
+}
+
+function addRioSectionHTML() {
+    if (document.getElementById("rio-section")) return;
+
+    const rioSectionHTML = `
+        <section id="rio-section" class="card section">
+            <h2>Отправка документов в РИО</h2>
+            <p>Заполните все шаги для отправки документов в редакционно-издательский отдел.</p>
+            
+            <div class="step-indicators">
+                <div id="rio-step-1-indicator" class="step-indicator active">Шаг 1: Загрузка файлов</div>
+                <div id="rio-step-2-indicator" class="step-indicator">Шаг 2: Проверка документа</div>
+                <div id="rio-step-3-indicator" class="step-indicator">Шаг 3: Отправка</div>
+            </div>
+            
+            <div id="rio-step-1" class="rio-step">
+                <div class="panel">
+                    <h3>Шаг 1: Прикрепите два файла</h3>
+                    <form id="rio-form-step1">
+                        <label for="rio-file-1">Файл 1 (doc, docx, pdf, txt, rtf, odt)</label>
+                        <input type="file" id="rio-file-1" accept=".doc,.docx,.pdf,.txt,.rtf,.odt" required />
+                        
+                        <label for="rio-file-2">Файл 2 (doc, docx, pdf, txt, rtf, odt)</label>
+                        <input type="file" id="rio-file-2" accept=".doc,.docx,.pdf,.txt,.rtf,.odt" required />
+                        
+                        <button type="submit" class="primary-btn">Загрузить файлы и продолжить →</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div id="rio-step-2" class="rio-step" style="display: none;">
+                <div class="panel">
+                    <h3>Шаг 2: Прикрепите документ для проверки</h3>
+                    <form id="rio-form-step2">
+                        <label for="rio-file-check">Файл для проверки (только .doc или .docx)</label>
+                        <input type="file" id="rio-file-check" accept=".doc,.docx" required />
+                        
+                        <div id="rio-step2-loading" class="loading-box" hidden>
+                            <div class="loader"></div>
+                            <div class="loading-content">
+                                <div class="loading-title">Проверка документа...</div>
+                                <div id="rio-check-progress" class="loading-text">0%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions" style="display: flex; gap: 10px; margin-top: 20px;">
+                            <button type="button" id="rio-back-btn" class="secondary-btn">← Назад</button>
+                            <button type="submit" class="primary-btn">Проверить файл и продолжить →</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div id="rio-step-3" class="rio-step" style="display: none;">
+                <div class="panel">
+                    <h3>Шаг 3: Отправка в РИО</h3>
+                    
+                    <div class="info-box" style="background: #f0f9ff; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+                        <p><strong>Отправитель:</strong> <span id="rio-user-fio"></span></p>
+                        <p><strong>Email:</strong> <span id="rio-user-email"></span></p>
+                    </div>
+                    
+                    <form id="rio-form-step3">
+                        <label for="rio-comment">Комментарий к отправке (макс. 1000 символов)</label>
+                        <div class="textarea-field">
+                            <textarea id="rio-comment" rows="4" placeholder="Введите ваш комментарий..."></textarea>
+                            <div class="textarea-footer">
+                                <small class="field-hint">Дополнительная информация для РИО</small>
+                                <span id="rio-comment-counter" class="char-counter">0 / 1000</span>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions" style="display: flex; gap: 10px; margin-top: 20px;">
+                            <button type="button" class="secondary-btn" onclick="goToPreviousStep()">← Назад</button>
+                            <button type="submit" class="primary-btn">Отправить в РИО ✉</button>
+                        </div>
+                    </form>
+                    
+                    <div id="rio-step3-result"></div>
+                </div>
+            </div>
+        </section>
+    `;
+
+    const main = document.querySelector('main');
+    if (main) {
+        main.insertAdjacentHTML('beforeend', rioSectionHTML);
+    }
+}
+
+function addRioStyles() {
+    if (document.getElementById('rio-styles')) return;
+
+    const style = document.createElement('style');
+    style.id = 'rio-styles';
+    style.textContent = `
+        .step-indicators {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .step-indicator {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            background: #f3f4f6;
+            border-radius: 12px;
+            font-weight: 500;
+            color: #6b7280;
+        }
+        
+        .step-indicator.active {
+            background: #2563eb;
+            color: white;
+        }
+        
+        .step-indicator.completed {
+            background: #15803d;
+            color: white;
+        }
+        
+        .rio-step {
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .info-box {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 12px;
+        }
+        
+        .info-box p {
+            margin: 8px 0;
+        }
+        
+        .info-box strong {
+            color: #0369a1;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Делаем функции глобальными
+window.goToPreviousStep = goToPreviousStep;
+window.resetAndGoToStep1 = resetAndGoToStep1;
+
+// ИНИЦИАЛИЗАЦИЯ
 async function bootstrap() {
   updateAuthStatus();
   initNavigation();
@@ -845,6 +1388,11 @@ async function bootstrap() {
   toggleTitleForms();
   initTextareaCounters();
   hideCheckLoading();
+
+  // Добавляем РИО секцию и стили
+  addRioSectionHTML();
+  addRioStyles();
+  initRioEvents();
 
   const messageBox = $("global-message");
   if (messageBox) {
@@ -867,4 +1415,5 @@ async function bootstrap() {
   }
 }
 
+// Запуск
 bootstrap();

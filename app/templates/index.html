@@ -10,7 +10,7 @@
   <div class="layout">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-logo">AI</div>
+        <div class="brand-logo">Ю</div>
         <div>
           <div class="brand-title">Проверка методичек</div>
           <div class="brand-subtitle">Веб-система</div>
@@ -23,6 +23,7 @@
         <button class="nav-btn" type="button" data-section="check-section">Проверка</button>
         <button class="nav-btn" type="button" data-section="title-page-section">Титульный лист</button>
         <button class="nav-btn" type="button" data-section="statistics-section">Статистика</button>
+        <button class="nav-btn" type="button" data-section="rio-section">Отправить в РИО</button>
         <button class="nav-btn" type="button" data-section="admin-section">Администрирование</button>
       </nav>
 
@@ -146,6 +147,7 @@
           <select id="title-doc-type" required>
             <option value="manual">Методические указания</option>
             <option value="tutorial">Учебное пособие</option>
+            <option value="monograph">Монография</option>
           </select>
 
           <!-- МЕТОДИЧЕСКИЕ УКАЗАНИЯ -->
@@ -291,6 +293,56 @@
             </div>
           </div>
 
+          <div id="monograph-title-block" style="display: none; margin-top: 18px;">
+            <div class="grid two">
+              <div class="panel">
+                <h3>Монография — первая страница</h3>
+
+                <div id="monograph-authors-container">
+                  <div class="monograph-author-item">
+                    <label>ФИО автора</label>
+                    <input type="text" class="monograph-author-fio" />
+                  </div>
+                </div>
+
+                <div class="form-actions">
+                  <button type="button" id="add-monograph-author-btn" class="secondary-btn">Добавить автора</button>
+                </div>
+
+                <label for="monograph-title">Тема монографии</label>
+                <input type="text" id="monograph-title" />
+
+                <label for="monograph-city">Город</label>
+                <input type="text" id="monograph-city" value="Курск" />
+
+                <label for="monograph-year">Год</label>
+                <input type="number" id="monograph-year" />
+              </div>
+
+              <div class="panel">
+                <h3>Монография — вторая страница</h3>
+
+                <label for="monograph-udk">Значение УДК</label>
+                <input type="text" id="monograph-udk" />
+
+                <label for="monograph-bbk">Значение ББК</label>
+                <input type="text" id="monograph-bbk" />
+
+                <label for="monograph-isbn">Значение ISBN</label>
+                <input type="text" id="monograph-isbn" />
+
+                <label for="monograph-description">Краткое описание монографии</label>
+                <div class="textarea-field">
+                  <textarea id="monograph-description" maxlength="1000" placeholder="Введите краткое описание монографии"></textarea>
+                  <div class="textarea-footer">
+                    <small class="field-hint">Не более 1000 символов</small>
+                    <span id="monograph-description-counter" class="char-counter">0 / 1000</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="form-actions">
             <button type="submit" class="primary-btn">Сгенерировать титульный лист</button>
           </div>
@@ -398,6 +450,6 @@
     </main>
   </div>
 
-  <script src="/static/app.js?v=titlepage10"></script>
+  <script src="/static/app.js?v=titlepage11"></script>
 </body>
 </html>
