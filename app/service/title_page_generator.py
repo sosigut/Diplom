@@ -159,20 +159,20 @@ def format_author_name_for_biblio(author_name: str) -> str:
 
     return text
 
+
 def generate_title_page_docx(
-    manual_title: str,
-    discipline_name: str,
-    audience: str,
-    direction_code: str,
-    direction_name: str,
-    department_name: str,
-    city: str,
-    year: int,
-    udk: str,
-    compiler_name: str,
-    reviewer_name: str,
-    reviewer_degree: str,
-    description: str,
+        manual_title: str,
+        discipline_name: str,
+        audience: str,
+        direction_code: str,
+        direction_name: str,
+        department_name: str,
+        city: str,
+        year: int,
+        udk: str,
+        compiler_name: str,
+        reviewers: list,  # теперь список рецензентов
+        description: str,
 ) -> str:
     output_dir = os.path.join(tempfile.gettempdir(), "title_pages")
     os.makedirs(output_dir, exist_ok=True)
@@ -195,8 +195,6 @@ def generate_title_page_docx(
     normal_style.font.size = Pt(16)
 
     clean_department_name = normalize_department_name(department_name)
-
-
 
     add_paragraph(doc, MINISTRY_NAME, align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
     add_paragraph(doc, UNIVERSITY_FULL_NAME, align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
@@ -278,21 +276,33 @@ def generate_title_page_docx(
     add_paragraph(doc, f"УДК  {udk}", size=16, space_after=0)
     add_paragraph(doc, f"Составитель:  {compiler_name}", size=16, space_after=6)
 
-    add_paragraph(doc, "Рецензент", size=16, space_after=0)
-    add_paragraph(
-        doc,
-        f"{reviewer_degree}  {reviewer_name}",
-        size=16,
-        space_after=6,
-    )
+    # Рецензенты (множественные)
+    reviewers_title = "Рецензенты:" if len(reviewers) > 1 else "Рецензент:"
+    add_paragraph(doc, reviewers_title, size=16, space_after=0)
+
+    for reviewer in reviewers:
+        add_paragraph(
+            doc,
+            f"{reviewer.degree}  {reviewer.fio}",
+            size=16,
+            space_after=0,
+        )
+    add_empty_paragraphs(doc, 1)
+
+    # Формируем строку рецензентов для библиографии
+    reviewers_fio = [r.fio for r in reviewers]
+    if len(reviewers_fio) == 1:
+        reviewers_str = reviewers_fio[0]
+    else:
+        reviewers_str = f"{', '.join(reviewers_fio[:-1])} и {reviewers_fio[-1]}"
 
     add_paragraph(
         doc,
         (
-            f"{manual_title}: методические указания для выполнения  лабораторной работы "
+            f"{manual_title}: методические указания для выполнения лабораторной работы "
             f"по дисциплине «{discipline_name}» для {audience} "
             f"направления подготовки {direction_code} {direction_name}/ "
-            f"Юго-Зап. гос. ун-т; сост. {compiler_name}. "
+            f"Юго-Зап. гос. ун-т; сост. {compiler_name}; рец. {reviewers_str}. "
             f"{city}, {year}. 19 с."
         ),
         size=16,
@@ -555,7 +565,9 @@ def generate_monograph_title_page_docx(
     if len(authors_fio) == 1:
         authors_biblio = authors_fio[0]
     else:
-        authors_biblio = f"{', '.join(authors_fio[:-1])} и {authors_fio[-1]}"
+        authors_biblio = f"{', '.join(authors_fio[:-1])}, {authors_fio[-1]}"
+
+    authors_str = ", ".join(authors_fio)
 
     # ========== 1 СТРАНИЦА ==========
     add_paragraph(doc, "МИНИСТЕРСТВО ОБРАЗОВАНИЯ РФ", align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
@@ -565,8 +577,7 @@ def generate_monograph_title_page_docx(
 
     add_empty_paragraphs(doc, 4)
 
-    for author in authors_fio:
-        add_paragraph(doc, author, align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+    add_paragraph(doc, authors_str, align=WD_ALIGN_PARAGRAPH.CENTER, size=16, bold=True)
 
     add_empty_paragraphs(doc, 2)
 
@@ -578,7 +589,7 @@ def generate_monograph_title_page_docx(
 
     add_empty_paragraphs(doc, 6)
 
-    add_paragraph(doc, f"{city} -- {year}", align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
+    add_paragraph(doc, f"{city} – {year}", align=WD_ALIGN_PARAGRAPH.CENTER, size=16)
 
     # ========== 2 СТРАНИЦА ==========
     new_section = doc.add_section(WD_SECTION_START.NEW_PAGE)

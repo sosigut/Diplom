@@ -42,8 +42,7 @@ def generate_title_page(
         year=data.year,
         udk=data.udk,
         compiler_name=data.compiler_name,
-        reviewer_name=data.reviewer_name,
-        reviewer_degree=data.reviewer_degree,
+        reviewers=data.reviewers,
         description=data.description,
     )
 

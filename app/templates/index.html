@@ -190,11 +190,19 @@
                 <label for="title-compiler">ФИО составителя</label>
                 <input type="text" id="title-compiler" required />
 
-                <label for="title-reviewer">ФИО рецензента</label>
-                <input type="text" id="title-reviewer" required />
+                <div id="manual-reviewers-container">
+                  <div class="manual-reviewer-item">
+                    <label>Ученая степень, должность рецензента</label>
+                    <input type="text" class="manual-reviewer-degree" required />
 
-                <label for="title-reviewer-degree">Степень рецензента</label>
-                <input type="text" id="title-reviewer-degree" required />
+                    <label>ФИО рецензента</label>
+                    <input type="text" class="manual-reviewer-fio" required />
+                  </div>
+                </div>
+
+                <div class="form-actions">
+                  <button type="button" id="add-manual-reviewer-btn" class="secondary-btn">Добавить рецензента</button>
+                </div>
 
                 <label for="title-description">Краткое описание</label>
                 <div class="textarea-field">
@@ -239,10 +247,11 @@
                 <div id="tutorial-reviewers-container">
                   <div class="tutorial-reviewer-item">
                     <label>Ученая степень, должность рецензента</label>
-                    <input type="text" class="tutorial-reviewer-degree" />
+                    <input type="text" class="tutorial-reviewer-degree" required />
 
                     <label>ФИО рецензента</label>
-                    <input type="text" class="tutorial-reviewer-fio" />
+                    <input type="text" class="tutorial-reviewer-fio" required />
+                    <!-- У первого рецензента НЕТ кнопки удаления -->
                   </div>
                 </div>
 
@@ -450,6 +459,6 @@
     </main>
   </div>
 
-  <script src="/static/app.js?v=titlepage11"></script>
+  <script src="/static/app.js?v=titlepage14"></script>
 </body>
 </html>

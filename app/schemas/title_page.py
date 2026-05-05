@@ -2,6 +2,11 @@ from typing import Literal, List
 from pydantic import BaseModel, Field
 
 
+class ManualReviewer(BaseModel):
+    degree: str = Field(..., description="Ученая степень, должность рецензента")
+    fio: str = Field(..., description="ФИО рецензента")
+
+
 class TitlePageRequest(BaseModel):
     # Методические указания
     manual_title: str
@@ -14,8 +19,7 @@ class TitlePageRequest(BaseModel):
 
     udk: str
     compiler_name: str
-    reviewer_name: str
-    reviewer_degree: str
+    reviewers: List[ManualReviewer] = Field(..., min_length=1, description="Список рецензентов")
     description: str = Field(..., max_length=1000)
 
 

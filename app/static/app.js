@@ -588,12 +588,26 @@ function addTutorialReviewer() {
   block.className = "tutorial-reviewer-item";
   block.innerHTML = `
     <label>Ученая степень, должность рецензента</label>
-    <input type="text" class="tutorial-reviewer-degree" />
-
+    <input type="text" class="tutorial-reviewer-degree" required />
+    
     <label>ФИО рецензента</label>
-    <input type="text" class="tutorial-reviewer-fio" />
+    <input type="text" class="tutorial-reviewer-fio" required />
+    <button type="button" class="remove-reviewer-btn secondary-btn" style="margin-top: 5px; margin-bottom: 10px;" onclick="removeReviewer(this)">Удалить рецензента</button>
   `;
   container.appendChild(block);
+}
+
+function removeReviewer(button) {
+  const container = $("tutorial-reviewers-container");
+  const item = button.parentElement;
+  const items = container.querySelectorAll(".tutorial-reviewer-item");
+
+  if (items.length <= 1) {
+    showMessage("Должен быть хотя бы один рецензент", "error");
+    return;
+  }
+
+  item.remove();
 }
 
 function addTutorialDirection() {
@@ -621,9 +635,22 @@ function addMonographAuthor() {
   block.innerHTML = `
     <label>ФИО автора</label>
     <input type="text" class="monograph-author-fio" />
-    <button type="button" class="remove-author-btn secondary-btn" style="margin-top: 5px; margin-bottom: 10px;" onclick="this.parentElement.remove()">Удалить</button>
+    <button type="button" class="remove-author-btn secondary-btn" style="margin-top: 5px; margin-bottom: 10px;" onclick="removeMonographAuthor(this)">Удалить автора</button>
   `;
   container.appendChild(block);
+}
+
+function removeMonographAuthor(button) {
+  const container = document.getElementById("monograph-authors-container");
+  const item = button.parentElement;
+  const items = container.querySelectorAll(".monograph-author-item");
+
+  if (items.length <= 1) {
+    showMessage("Должен быть хотя бы один автор", "error");
+    return;
+  }
+
+  item.remove();
 }
 
 async function handleTutorialTitlePageGenerate() {
@@ -787,6 +814,36 @@ function validateFacultyCode(code) {
   return regex.test(code);
 }
 
+function addManualReviewer() {
+  const container = document.getElementById("manual-reviewers-container");
+  if (!container) return;
+
+  const block = document.createElement("div");
+  block.className = "manual-reviewer-item";
+  block.innerHTML = `
+    <label>Ученая степень, должность рецензента</label>
+    <input type="text" class="manual-reviewer-degree" required />
+    
+    <label>ФИО рецензента</label>
+    <input type="text" class="manual-reviewer-fio" required />
+    <button type="button" class="remove-reviewer-btn secondary-btn" style="margin-top: 5px; margin-bottom: 10px;" onclick="removeManualReviewer(this)">Удалить рецензента</button>
+  `;
+  container.appendChild(block);
+}
+
+function removeManualReviewer(button) {
+  const container = document.getElementById("manual-reviewers-container");
+  const item = button.parentElement;
+  const items = container.querySelectorAll(".manual-reviewer-item");
+
+  if (items.length <= 1) {
+    showMessage("Должен быть хотя бы один рецензент", "error");
+    return;
+  }
+
+  item.remove();
+}
+
 async function handleTitlePageGenerate(event) {
   event.preventDefault();
 
@@ -808,6 +865,14 @@ async function handleTitlePageGenerate(event) {
     return;
   }
 
+  // Собираем рецензентов для методических указаний
+  const reviewers = [...document.querySelectorAll(".manual-reviewer-item")]
+    .map(item => ({
+      degree: item.querySelector(".manual-reviewer-degree")?.value.trim(),
+      fio: item.querySelector(".manual-reviewer-fio")?.value.trim(),
+    }))
+    .filter(item => item.degree && item.fio);
+
   const payload = {
     manual_title: $("title-manual-title")?.value.trim(),
     discipline_name: $("title-discipline-name")?.value.trim(),
@@ -818,8 +883,7 @@ async function handleTitlePageGenerate(event) {
     year: Number($("title-year")?.value),
     udk: $("title-udk")?.value.trim(),
     compiler_name: $("title-compiler")?.value.trim(),
-    reviewer_name: $("title-reviewer")?.value.trim(),
-    reviewer_degree: $("title-reviewer-degree")?.value.trim(),
+    reviewers: reviewers,
     description: $("title-description")?.value.trim(),
   };
 
@@ -833,11 +897,10 @@ async function handleTitlePageGenerate(event) {
     !payload.year ||
     !payload.udk ||
     !payload.compiler_name ||
-    !payload.reviewer_name ||
-    !payload.reviewer_degree ||
-    !payload.description
+    !payload.description ||
+    payload.reviewers.length === 0
   ) {
-    showMessage("Заполните все поля титульного листа", "error");
+    showMessage("Заполните все поля титульного листа и добавьте хотя бы одного рецензента", "error");
     return;
   }
 
@@ -933,6 +996,7 @@ function initEvents() {
   $("add-reviewer-btn")?.addEventListener("click", addTutorialReviewer);
   $("add-direction-btn")?.addEventListener("click", addTutorialDirection);
   $("add-monograph-author-btn")?.addEventListener("click", addMonographAuthor);
+  $("add-manual-reviewer-btn")?.addEventListener("click", addManualReviewer);
 }
 
 // ========== РИО ОТПРАВКА ==========
