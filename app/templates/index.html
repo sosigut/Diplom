@@ -12,7 +12,7 @@
       <div class="brand">
         <div class="brand-logo">Ю</div>
         <div>
-          <div class="brand-title">Проверка методичек</div>
+          <div class="brand-title">Проверка файлов</div>
           <div class="brand-subtitle">Веб-система</div>
         </div>
       </div>
@@ -108,21 +108,39 @@
 
         <div class="check-subnav-card">
           <button type="button" class="check-subnav-btn active" data-check-type="manual">
-            📘 Проверить методичку
+            📘 Методические указания
           </button>
           <button type="button" class="check-subnav-btn" data-check-type="tutorial">
-            📗 Проверить уч. пособие
+            📗 Учебное пособие
           </button>
           <button type="button" class="check-subnav-btn" data-check-type="monograph">
-            📕 Проверить монографию
+            📕 Монография
           </button>
         </div>
 
         <div class="panel">
           <form id="check-form">
-            <label for="manual-file" id="check-file-label">Выберите .doc или .docx файл методических указаний</label>
-            <input type="file" id="manual-file" accept=".doc,.docx" required />
-            <button type="submit" class="primary-btn" id="check-submit-btn">Проверить методичку</button>
+            <div class="file-upload-wrapper">
+              <label id="file-upload-label" class="file-upload-label" for="manual-file-input">
+                📁 Выберите файл
+              </label>
+              <input type="file" id="manual-file-input" class="file-upload-input" accept=".doc,.docx" required />
+              <span id="file-name-display" class="file-name-display">Файл не выбран</span>
+            </div>
+
+            <div id="drop-area" class="check-file-area">
+              <div class="check-file-icon">📄</div>
+              <div class="check-file-text">
+                Перетащите файл сюда или <a href="#" id="browse-file-link">выберите файл</a>
+              </div>
+              <div class="check-file-text">Поддерживаются .doc и .docx</div>
+            </div>
+
+            <div id="file-selected-info" class="file-selected-info" style="display: none;">
+              ✅ Выбран файл: <span id="selected-file-name"></span>
+            </div>
+
+            <button type="submit" class="primary-btn" id="check-submit-btn">Проверить методические указания</button>
           </form>
 
           <div id="check-loading" class="loading-box" hidden>
@@ -467,6 +485,6 @@
     </main>
   </div>
 
-  <script src="/static/app.js?v=titlepage16"></script>
+  <script src="/static/app.js?v=titlepage17"></script>
 </body>
 </html>

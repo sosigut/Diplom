@@ -274,6 +274,78 @@ async function loadProfile() {
   `;
 }
 
+function initFileUpload() {
+  const fileInput = document.getElementById("manual-file-input");
+  const fileNameDisplay = document.getElementById("file-name-display");
+  const fileSelectedInfo = document.getElementById("file-selected-info");
+  const selectedFileName = document.getElementById("selected-file-name");
+  const dropArea = document.getElementById("drop-area");
+  const browseLink = document.getElementById("browse-file-link");
+
+  if (!fileInput) return;
+
+  // Обработка выбора файла через кнопку
+  fileInput.addEventListener("change", function(e) {
+    if (this.files && this.files[0]) {
+      const name = this.files[0].name;
+      fileNameDisplay.textContent = name;
+      if (selectedFileName) selectedFileName.textContent = name;
+      if (fileSelectedInfo) fileSelectedInfo.style.display = "inline-flex";
+    } else {
+      fileNameDisplay.textContent = "Файл не выбран";
+      if (fileSelectedInfo) fileSelectedInfo.style.display = "none";
+    }
+  });
+
+  // Обработка клика по области перетаскивания
+  if (dropArea) {
+    dropArea.addEventListener("click", function() {
+      fileInput.click();
+    });
+  }
+
+  // Обработка клика по ссылке "выберите файл"
+  if (browseLink) {
+    browseLink.addEventListener("click", function(e) {
+      e.preventDefault();
+      fileInput.click();
+    });
+  }
+
+  // Drag & drop
+  if (dropArea) {
+    dropArea.addEventListener("dragover", function(e) {
+      e.preventDefault();
+      dropArea.classList.add("drag-over");
+    });
+
+    dropArea.addEventListener("dragleave", function(e) {
+      e.preventDefault();
+      dropArea.classList.remove("drag-over");
+    });
+
+    dropArea.addEventListener("drop", function(e) {
+      e.preventDefault();
+      dropArea.classList.remove("drag-over");
+
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        const file = files[0];
+        const ext = file.name.split('.').pop().toLowerCase();
+
+        if (ext === 'doc' || ext === 'docx') {
+          fileInput.files = files;
+          // Триггерим событие change
+          const event = new Event('change', { bubbles: true });
+          fileInput.dispatchEvent(event);
+        } else {
+          showMessage("Поддерживаются только файлы .doc и .docx", "error");
+        }
+      }
+    });
+  }
+}
+
 async function handleCheck(event) {
   event.preventDefault();
 
@@ -282,9 +354,7 @@ async function handleCheck(event) {
     return;
   }
 
-  const form = event.target;
-  const submitBtn = form.querySelector('button[type="submit"]');
-  const fileInput = $("manual-file");
+  const fileInput = document.getElementById("manual-file-input");
 
   if (!fileInput || !fileInput.files.length) {
     showMessage("Выберите файл", "error");
@@ -294,6 +364,7 @@ async function handleCheck(event) {
   const file = fileInput.files[0];
   const estimatedTime = estimateCheckTime(file);
 
+  const submitBtn = document.getElementById("check-submit-btn");
   if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.textContent = "Проверяется...";
@@ -302,7 +373,7 @@ async function handleCheck(event) {
   fileInput.disabled = true;
 
   showCheckLoading(file.name, estimatedTime);
-  $("check-result").innerHTML = `
+  document.getElementById("check-result").innerHTML = `
     <div class="stat-card">
       <h3>Проверка запущена</h3>
       <p>Идёт анализ документа. Пожалуйста, подождите.</p>
@@ -311,6 +382,7 @@ async function handleCheck(event) {
 
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("doc_type", currentCheckType);
 
   try {
     const response = await apiFetch("/checker/check", {
@@ -332,13 +404,13 @@ async function handleCheck(event) {
       : "";
 
     const checkTypeNames = {
-      manual: "методического указания",
-      tutorial: "учебного пособия",
-      monograph: "монографии"
+      manual: "Методические указания",
+      tutorial: "Учебное пособие",
+      monograph: "Монография"
     };
     const docTypeName = checkTypeNames[currentCheckType] || "Документ";
 
-    $("check-result").innerHTML = `
+    document.getElementById("check-result").innerHTML = `
       <div class="stat-card">
         <h3>Результат проверки ${docTypeName}</h3>
         <p><strong>Статус:</strong> ${data.has_errors ? "Найдены замечания" : "Ошибок не найдено"}</p>
@@ -357,7 +429,7 @@ async function handleCheck(event) {
     await loadManuals();
     showMessage(data.message || "Проверка завершена", "success");
   } catch (error) {
-    $("check-result").innerHTML = `
+    document.getElementById("check-result").innerHTML = `
       <div class="stat-card">
         <h3>Ошибка проверки</h3>
         <p>Во время обработки файла произошла ошибка.</p>
@@ -369,7 +441,7 @@ async function handleCheck(event) {
 
     if (submitBtn) {
       const buttonTexts = {
-        manual: "Проверить методичку",
+        manual: "Проверить методические указания",
         tutorial: "Проверить учебное пособие",
         monograph: "Проверить монографию"
       };
@@ -377,9 +449,10 @@ async function handleCheck(event) {
       submitBtn.textContent = buttonTexts[currentCheckType];
     }
 
-    fileInput.disabled = false;
+    if (fileInput) fileInput.disabled = false;
   }
 }
+
 
 async function loadManuals() {
   if (!state.accessToken) {
@@ -387,11 +460,12 @@ async function loadManuals() {
     return;
   }
 
-  const response = await apiFetch("/checker/my");
+  // Используем currentCheckType для определения типа документа
+  const response = await apiFetch(`/checker/my/${currentCheckType}`);
   const data = await parseResponse(response);
 
   if (!response.ok) {
-    $("manuals-list").innerHTML = "Не удалось загрузить список методичек";
+    $("manuals-list").innerHTML = "Не удалось загрузить список документов";
     return;
   }
 
@@ -403,10 +477,10 @@ async function loadManuals() {
   $("manuals-list").innerHTML = data.map(item => `
     <div class="manual-item">
       <div>
-        <div><strong>${item.manual_name || item.file_name || "Методичка"}</strong></div>
+        <div><strong>${item.name}</strong></div>
         <div class="manual-meta">
           ${item.fio_user ? `Автор: ${item.fio_user}<br>` : ""}
-          ${item.created_at ? `Добавлена: ${new Date(item.created_at).toLocaleString()}` : ""}
+          ${item.created_at ? `Добавлен: ${new Date(item.created_at).toLocaleString()}` : ""}
         </div>
       </div>
       <div class="manual-meta">
@@ -430,6 +504,11 @@ async function handleFacultyStat(event) {
   const from = $("stat-faculty-from").value;
   const to = $("stat-faculty-to").value;
 
+  if (!from || !to) {
+    showMessage("Выберите даты", "error");
+    return;
+  }
+
   const response = await apiFetch(
     `/statistics/faculty?faculty_code=${encodeURIComponent(code)}&date_from=${from}&date_to=${to}`
   );
@@ -442,10 +521,15 @@ async function handleFacultyStat(event) {
 
   $("statistics-result").innerHTML = `
     <div class="stat-card">
-      <h3>Результат</h3>
-      <p><strong>Факультет:</strong> ${data.value}</p>
+      <h3>📊 Результат по факультету</h3>
+      <p><strong>Код факультета:</strong> ${data.value}</p>
       <p><strong>Период:</strong> ${data.date_from} — ${data.date_to}</p>
-      <p><strong>Количество методичек:</strong> ${data.manual_count}</p>
+      <hr style="margin: 12px 0; border-color: var(--line);">
+      <p><strong>📘 Методические указания:</strong> ${data.manual_count}</p>
+      <p><strong>📗 Учебные пособия:</strong> ${data.tutorial_count}</p>
+      <p><strong>📕 Монографии:</strong> ${data.monograph_count}</p>
+      <hr style="margin: 12px 0; border-color: var(--line);">
+      <p><strong>📎 Общее количество документов:</strong> <strong style="color: var(--primary); font-size: 18px;">${data.total_count}</strong></p>
     </div>
   `;
 }
@@ -456,6 +540,11 @@ async function handleDepartmentStat(event) {
   const departmentName = $("stat-department-name").value.trim();
   const from = $("stat-department-from").value;
   const to = $("stat-department-to").value;
+
+  if (!departmentName || !from || !to) {
+    showMessage("Заполните все поля", "error");
+    return;
+  }
 
   const response = await apiFetch(
     `/statistics/department?department_name=${encodeURIComponent(departmentName)}&date_from=${from}&date_to=${to}`
@@ -469,21 +558,32 @@ async function handleDepartmentStat(event) {
 
   $("statistics-result").innerHTML = `
     <div class="stat-card">
-      <h3>Результат</h3>
-      <p><strong>Кафедра:</strong> ${data.value}</p>
+      <h3>📊 Результат по кафедре</h3>
+      <p><strong>Название кафедры:</strong> ${data.value}</p>
       <p><strong>Период:</strong> ${data.date_from} — ${data.date_to}</p>
-      <p><strong>Количество методичек:</strong> ${data.manual_count}</p>
+      <hr style="margin: 12px 0; border-color: var(--line);">
+      <p><strong>📘 Методические указания:</strong> ${data.manual_count}</p>
+      <p><strong>📗 Учебные пособия:</strong> ${data.tutorial_count}</p>
+      <p><strong>📕 Монографии:</strong> ${data.monograph_count}</p>
+      <hr style="margin: 12px 0; border-color: var(--line);">
+      <p><strong>📎 Общее количество документов:</strong> <strong style="color: var(--primary); font-size: 18px;">${data.total_count}</strong></p>
     </div>
   `;
 }
 
 async function handleUserStat(event) {
   event.preventDefault();
-  const fio = encodeURIComponent($("stat-user-fio").value.trim());
+
+  const fio = $("stat-user-fio").value.trim();
   const from = $("stat-user-from").value;
   const to = $("stat-user-to").value;
 
-  const response = await apiFetch(`/statistics/user?fio_user=${fio}&date_from=${from}&date_to=${to}`);
+  if (!fio || !from || !to) {
+    showMessage("Заполните все поля", "error");
+    return;
+  }
+
+  const response = await apiFetch(`/statistics/user?fio_user=${encodeURIComponent(fio)}&date_from=${from}&date_to=${to}`);
   const data = await parseResponse(response);
 
   if (!response.ok) {
@@ -493,10 +593,15 @@ async function handleUserStat(event) {
 
   $("statistics-result").innerHTML = `
     <div class="stat-card">
-      <h3>Результат</h3>
-      <p><strong>Пользователь:</strong> ${data.value}</p>
+      <h3>📊 Результат по пользователю</h3>
+      <p><strong>ФИО пользователя:</strong> ${data.value}</p>
       <p><strong>Период:</strong> ${data.date_from} — ${data.date_to}</p>
-      <p><strong>Количество методичек:</strong> ${data.manual_count}</p>
+      <hr style="margin: 12px 0; border-color: var(--line);">
+      <p><strong>📘 Методические указания:</strong> ${data.manual_count}</p>
+      <p><strong>📗 Учебные пособия:</strong> ${data.tutorial_count}</p>
+      <p><strong>📕 Монографии:</strong> ${data.monograph_count}</p>
+      <hr style="margin: 12px 0; border-color: var(--line);">
+      <p><strong>📎 Общее количество документов:</strong> <strong style="color: var(--primary); font-size: 18px;">${data.total_count}</strong></p>
     </div>
   `;
 }
@@ -625,7 +730,7 @@ function initTextareaCounters() {
 function initCheckSubnav() {
   const buttons = document.querySelectorAll(".check-subnav-card .check-subnav-btn");
   buttons.forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       buttons.forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       currentCheckType = btn.dataset.checkType;
@@ -636,6 +741,8 @@ function initCheckSubnav() {
 
       const fileInput = document.getElementById("manual-file");
       if (fileInput) fileInput.value = "";
+
+      await loadManuals();
     });
   });
 }
@@ -1511,6 +1618,8 @@ async function bootstrap() {
   toggleTitleForms();
   initTextareaCounters();
   hideCheckLoading();
+
+  initFileUpload();
 
   initCheckSubnav();
   updateCheckUIType("manual");

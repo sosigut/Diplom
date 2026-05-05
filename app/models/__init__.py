@@ -3,3 +3,5 @@ from app.models.department import Department
 from app.models.user import User
 from app.models.manual import Manual
 from app.models.refresh_token import RefreshToken
+from app.models.tutorial import Tutorial
+from app.models.monograph import Monograph

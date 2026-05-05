@@ -622,6 +622,105 @@ textarea:focus {
   font-size: 14px;
 }
 
+/* Кастомный файловый инпут */
+.file-upload-wrapper {
+  position: relative;
+  margin-top: 8px;
+}
+
+.file-upload-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.file-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #e5edf9;
+  color: #1e3a8a;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.file-upload-label:hover {
+  background: #d7e3f6;
+}
+
+.file-upload-label:active {
+  transform: scale(0.98);
+}
+
+.file-name-display {
+  margin-left: 12px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: normal;
+  display: inline-block;
+}
+
+/* Для загрузки файлов в проверке */
+.check-file-area {
+  border: 2px dashed var(--line-strong);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  background: #fafcff;
+  transition: all 0.2s;
+  cursor: pointer;
+  margin: 16px 0;
+}
+
+.check-file-area:hover {
+  border-color: var(--primary);
+  background: #f0f7ff;
+}
+
+.check-file-area.drag-over {
+  border-color: var(--primary);
+  background: #e8f0fe;
+  border-style: solid;
+}
+
+.check-file-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.check-file-text {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.check-file-text a {
+  color: var(--primary);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.check-file-text a:hover {
+  text-decoration: underline;
+}
+
+.file-selected-info {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #ecfdf5;
+  border-radius: 10px;
+  color: #166534;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .primary-btn:disabled,
 .secondary-btn:disabled,
 .danger-btn:disabled {
