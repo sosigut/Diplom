@@ -104,39 +104,47 @@
       </section>
 
       <section id="check-section" class="card section">
-          <h2>Система проверки файлов</h2>
+        <h2>Система проверки файлов</h2>
 
-          <div class="panel">
-              <form id="check-form">
-                  <label for="manual-file">Выберите .doc или .docx файл</label>
-                  <input type="file" id="manual-file" accept=".doc,.docx" required />
-                  <button type="submit" class="primary-btn">Проверить файл</button>
-              </form>
+        <div class="check-subnav-card">
+          <button type="button" class="check-subnav-btn active" data-check-type="manual">
+            📘 Проверить методичку
+          </button>
+          <button type="button" class="check-subnav-btn" data-check-type="tutorial">
+            📗 Проверить уч. пособие
+          </button>
+          <button type="button" class="check-subnav-btn" data-check-type="monograph">
+            📕 Проверить монографию
+          </button>
+        </div>
 
-              <div id="check-loading" class="loading-box" hidden>
-                  <div class="loader"></div>
-                  <div class="loading-content">
-                      <div id="check-loading-title" class="loading-title">
-                          Идёт проверка файла...
-                      </div>
-                      <div id="check-loading-text" class="loading-text">
-                          Пожалуйста, подождите
-                      </div>
-                  </div>
-              </div>
+        <div class="panel">
+          <form id="check-form">
+            <label for="manual-file" id="check-file-label">Выберите .doc или .docx файл методических указаний</label>
+            <input type="file" id="manual-file" accept=".doc,.docx" required />
+            <button type="submit" class="primary-btn" id="check-submit-btn">Проверить методичку</button>
+          </form>
+
+          <div id="check-loading" class="loading-box" hidden>
+            <div class="loader"></div>
+            <div class="loading-content">
+              <div id="check-loading-title" class="loading-title">Идёт проверка файла...</div>
+              <div id="check-loading-text" class="loading-text">Пожалуйста, подождите</div>
+            </div>
           </div>
+        </div>
 
-          <div id="check-result" class="result-box empty-state">
-              Здесь появится результат проверки
-          </div>
+        <div id="check-result" class="result-box empty-state">
+          Здесь появится результат проверки
+        </div>
 
-          <div class="panel" style="margin-top: 20px;">
-              <div class="panel-header">
-                  <h3>Мои файлы</h3>
-                  <button id="load-manuals-btn" type="button" class="secondary-btn">Обновить список</button>
-              </div>
-              <div id="manuals-list" class="empty-state">Список пока пуст</div>
+        <div class="panel" style="margin-top: 20px;">
+          <div class="panel-header">
+            <h3>Мои файлы</h3>
+            <button id="load-manuals-btn" type="button" class="secondary-btn">Обновить список</button>
           </div>
+          <div id="manuals-list" class="empty-state">Список пока пуст</div>
+        </div>
       </section>
 
       <section id="title-page-section" class="card section">
@@ -459,6 +467,6 @@
     </main>
   </div>
 
-  <script src="/static/app.js?v=titlepage14"></script>
+  <script src="/static/app.js?v=titlepage16"></script>
 </body>
 </html>

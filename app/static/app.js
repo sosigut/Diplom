@@ -8,6 +8,8 @@ const $ = (id) => document.getElementById(id);
 
 let toastTimer = null;
 
+let currentCheckType = "manual"; // manual, tutorial, monograph
+
 function showMessage(text, type = "info") {
   const box = $("global-message");
   if (!box) return;
@@ -47,6 +49,35 @@ function clearTokens() {
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
   updateAuthStatus();
+}
+
+function updateCheckUIType(checkType) {
+  const fileLabel = document.getElementById("check-file-label");
+  const submitBtn = document.getElementById("check-submit-btn");
+  const loadingTitle = document.getElementById("check-loading-title");
+
+  const texts = {
+    manual: {
+      label: "📘 Выберите .doc или .docx файл методических указаний",
+      button: "📘 Проверить методичку",
+      loading: "📘 Идёт проверка методических указаний..."
+    },
+    tutorial: {
+      label: "📗 Выберите .doc или .docx файл учебного пособия",
+      button: "📗 Проверить учебное пособие",
+      loading: "📗 Идёт проверка учебного пособия..."
+    },
+    monograph: {
+      label: "📕 Выберите .doc или .docx файл монографии",
+      button: "📕 Проверить монографию",
+      loading: "📕 Идёт проверка монографии..."
+    }
+  };
+
+  const t = texts[checkType];
+  if (fileLabel) fileLabel.textContent = t.label;
+  if (submitBtn) submitBtn.textContent = t.button;
+  if (loadingTitle) loadingTitle.textContent = t.loading;
 }
 
 async function refreshAccessToken() {
@@ -123,7 +154,6 @@ function showCheckLoading(fileName, estimatedTime) {
 
   if (!box || !title || !text) return;
 
-  title.textContent = "Идёт проверка файла...";
   text.textContent = `Файл: ${fileName}. Ориентировочное время: ${estimatedTime}`;
   box.hidden = false;
 }
@@ -301,9 +331,16 @@ async function handleCheck(event) {
       ? `<a class="link-btn report" href="${data.pdf_report_url}" target="_blank">Открыть PDF-отчёт</a>`
       : "";
 
+    const checkTypeNames = {
+      manual: "методического указания",
+      tutorial: "учебного пособия",
+      monograph: "монографии"
+    };
+    const docTypeName = checkTypeNames[currentCheckType] || "Документ";
+
     $("check-result").innerHTML = `
       <div class="stat-card">
-        <h3>Результат проверки</h3>
+        <h3>Результат проверки ${docTypeName}</h3>
         <p><strong>Статус:</strong> ${data.has_errors ? "Найдены замечания" : "Ошибок не найдено"}</p>
         <p><strong>Ошибки:</strong> ${data.errors_count ?? 0}</p>
         <div class="actions-row">
@@ -331,8 +368,13 @@ async function handleCheck(event) {
     hideCheckLoading();
 
     if (submitBtn) {
+      const buttonTexts = {
+        manual: "Проверить методичку",
+        tutorial: "Проверить учебное пособие",
+        monograph: "Проверить монографию"
+      };
       submitBtn.disabled = false;
-      submitBtn.textContent = "Проверить методичку";
+      submitBtn.textContent = buttonTexts[currentCheckType];
     }
 
     fileInput.disabled = false;
@@ -578,6 +620,24 @@ function initTextareaCounters() {
   bindTextareaCounter("title-description", "title-description-counter", 1000);
   bindTextareaCounter("tutorial-description", "tutorial-description-counter", 500);
   bindTextareaCounter("monograph-description", "monograph-description-counter", 1000);
+}
+
+function initCheckSubnav() {
+  const buttons = document.querySelectorAll(".check-subnav-card .check-subnav-btn");
+  buttons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      buttons.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentCheckType = btn.dataset.checkType;
+      updateCheckUIType(currentCheckType);
+
+      const resultDiv = document.getElementById("check-result");
+      if (resultDiv) resultDiv.innerHTML = "Здесь появится результат проверки";
+
+      const fileInput = document.getElementById("manual-file");
+      if (fileInput) fileInput.value = "";
+    });
+  });
 }
 
 function addTutorialReviewer() {
@@ -1440,7 +1500,6 @@ function addRioStyles() {
     document.head.appendChild(style);
 }
 
-// Делаем функции глобальными
 window.goToPreviousStep = goToPreviousStep;
 window.resetAndGoToStep1 = resetAndGoToStep1;
 
@@ -1453,7 +1512,9 @@ async function bootstrap() {
   initTextareaCounters();
   hideCheckLoading();
 
-  // Добавляем РИО секцию и стили
+  initCheckSubnav();
+  updateCheckUIType("manual");
+
   addRioSectionHTML();
   addRioStyles();
   initRioEvents();
